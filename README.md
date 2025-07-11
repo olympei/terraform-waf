@@ -20,3 +20,24 @@ terraform init
 terraform plan
 terraform apply
 ```
+
+
+<!-- 
+  dynamic "rule" {
+    for_each = var.custom_rules
+    content {
+      name     = rule.value.name
+      priority = rule.value.priority
+      action {
+        ${rule.value.action} {}
+      }
+      statement {
+        ${rule.value.statement}
+      }
+      visibility_config {
+        cloudwatch_metrics_enabled = true
+        metric_name                = rule.value.metric_name
+        sampled_requests_enabled   = true
+      }
+    }
+  } -->

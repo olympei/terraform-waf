@@ -1,20 +1,81 @@
 
+locals {
+  selected_rules = var.custom_rules
+}
+
 resource "aws_wafv2_rule_group" "this" {
   count    = var.use_rendered_rules ? 0 : 1
   name     = var.rule_group_name
   scope    = var.scope
   capacity = var.capacity
 
-  dynamic "rule" {
-    for_each = var.custom_rules
+    dynamic "rule" {
+    for_each = local.selected_rules
     content {
       name     = rule.value.name
       priority = rule.value.priority
       action {
-        ${rule.value.action} {}
+        ${rule.value.action == "allow" ? "allow {}" : rule.value.action == "count" ? "count {}" : "block {}"}
       }
       statement {
-        ${rule.value.statement}
+        ${rule.value.statement != null ? rule.value.statement : join("", [
+          rule.value.type == "sqli" ? <<-EOT
+          sqli_match_statement {
+            field_to_match {
+              ${rule.value.field_to_match} {}
+            }
+            text_transformations {
+              priority = 0
+              type     = "NONE"
+            }
+          }
+          EOT : "",
+
+          rule.value.type == "xss" ? <<-EOT
+          xss_match_statement {
+            field_to_match {
+              ${rule.value.field_to_match} {}
+            }
+            text_transformations {
+              priority = 0
+              type     = "NONE"
+            }
+          }
+          EOT : "",
+
+          rule.value.type == "ip_block" ? <<-EOT
+          ip_set_reference_statement {
+            arn = rule.value.ip_set_arn
+          }
+          EOT : "",
+
+          rule.value.type == "regex" ? <<-EOT
+          regex_pattern_set_reference_statement {
+            arn = rule.value.regex_pattern_set
+            field_to_match {
+              ${rule.value.field_to_match} {}
+            }
+            text_transformations {
+              priority = 0
+              type     = "NONE"
+            }
+          }
+          EOT : "",
+
+          rule.value.type == "byte_match" ? <<-EOT
+          byte_match_statement {
+            search_string = rule.value.search_string
+            field_to_match {
+              ${rule.value.field_to_match} {}
+            }
+            positional_constraint = "CONTAINS"
+            text_transformations {
+              priority = 0
+              type     = "NONE"
+            }
+          }
+          EOT : ""
+        ])}
       }
       visibility_config {
         cloudwatch_metrics_enabled = true
@@ -23,7 +84,6 @@ resource "aws_wafv2_rule_group" "this" {
       }
     }
   }
-
   visibility_config {
     cloudwatch_metrics_enabled = true
     metric_name                = var.metric_name
