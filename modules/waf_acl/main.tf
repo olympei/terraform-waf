@@ -1,9 +1,15 @@
-# File: modules/waf_acl/main.tf
+resource "aws_kms_key" "this" {
+  count               = var.kms_key_id == null && var.create_log_group ? 1 : 0
+  description         = "KMS key for encrypting WAF logs"
+  enable_key_rotation = true
+  tags                = var.tags
+}
+
 resource "aws_cloudwatch_log_group" "this" {
   count             = var.create_log_group ? 1 : 0
   name              = var.log_group_name != null ? var.log_group_name : "/aws/wafv2/${var.name}"
   retention_in_days = var.log_group_retention_in_days
-  kms_key_id        = var.kms_key_id
+  kms_key_id        = var.kms_key_id != null ? var.kms_key_id : aws_kms_key.this[0].arn
   tags              = var.tags
 }
 
@@ -36,10 +42,20 @@ resource "aws_wafv2_web_acl" "this" {
     cloudwatch_metrics_enabled = true
     metric_name                = var.name
     sampled_requests_enabled   = true
-    cloudwatch_log_group_arn   = var.create_log_group ? aws_cloudwatch_log_group.this[0].arn : var.existing_log_group_arn
   }
 
   tags = var.tags
+}
+
+resource "aws_wafv2_web_acl_logging_configuration" "this" {
+  count = var.create_log_group || var.existing_log_group_arn != null ? 1 : 0
+
+  resource_arn = aws_wafv2_web_acl.this.arn
+
+  log_destination_configs = var.create_log_group ? [aws_cloudwatch_log_group.this[0].arn] : [var.existing_log_group_arn]
+
+  depends_on = [aws_wafv2_web_acl.this]
+}
 }
 
 resource "aws_wafv2_web_acl_association" "this" {
