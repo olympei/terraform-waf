@@ -16,15 +16,21 @@ variable "rule_group_arn_list" {
 }
 ```
 
+# Variable: aws_managed_rule_groups
+```hcl
 variable "aws_managed_rule_groups" {
+  description = "List of AWS Managed Rule Groups to include in the WAF ACL. Each object must include vendor_name, name, and priority."
   type = list(object({
-    name            = string
-    vendor          = string
-    priority        = number
-    override_action = optional(string, "none")
+    name         = string
+    vendor_name  = string
+    priority     = number
+    override_action = optional(string, "none") # none or count
   }))
   default = []
 }
+```
+
+
 variable "alb_arn_list" { type = list(string) default = [] }
 variable "tags" { type = map(string) default = {} }
 
