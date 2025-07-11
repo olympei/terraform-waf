@@ -13,6 +13,15 @@ resource "aws_cloudwatch_log_group" "this" {
   tags              = var.tags
 }
 
+# Local: Combined priorities for validation
+```hcl
+locals {
+  inline_priorities      = [for r in var.custom_inline_rules : r.priority]
+  rulegroup_priorities   = [for i, r in var.rule_group_arn_list : coalesce(r.priority, 100 + i)]
+  all_waf_priorities     = concat(local.inline_priorities, local.rulegroup_priorities)
+}
+```
+
 resource "aws_wafv2_web_acl" "this" {
   name  = var.name
   scope = var.scope
@@ -21,18 +30,39 @@ resource "aws_wafv2_web_acl" "this" {
     ${var.default_action == "allow" ? "allow {}" : "block {}"}
   }
 
-  dynamic "rule" {
+ dynamic "rule" {
     for_each = var.rule_group_arn_list
     content {
-      name     = "group-${index(var.rule_group_arn_list, rule.value)}"
-      priority = 10 + index(var.rule_group_arn_list, rule.value)
-      override_action { none {} }
+      name     = lookup(rule.value, "name", "group-${rule.key}")
+      priority = lookup(rule.value, "priority", 100 + rule.key)
+      override_action {
+        none {}
+      }
       statement {
-        rule_group_reference_statement { arn = rule.value }
+        rule_group_reference_statement {
+          arn = rule.value.arn
+        }
       }
       visibility_config {
         cloudwatch_metrics_enabled = true
-        metric_name                = "group-${index(var.rule_group_arn_list, rule.value)}"
+        sampled_requests_enabled   = true
+        metric_name                = lookup(rule.value, "name", "group-${rule.key}")
+      }
+    }
+  }
+
+   dynamic "rule" {
+    for_each = var.custom_inline_rules
+    content {
+      name     = rule.value.name
+      priority = rule.value.priority
+      action {
+        ${rule.value.action == "block" ? "block {}" : rule.value.action == "count" ? "count {}" : "allow {}"}
+      }
+      statement = rule.value.statement
+      visibility_config {
+        cloudwatch_metrics_enabled = true
+        metric_name                = rule.value.metric_name
         sampled_requests_enabled   = true
       }
     }
@@ -56,7 +86,7 @@ resource "aws_wafv2_web_acl_logging_configuration" "this" {
 
   depends_on = [aws_wafv2_web_acl.this]
 }
-}
+
 
 resource "aws_wafv2_web_acl_association" "this" {
   for_each     = toset(var.alb_arn_list)

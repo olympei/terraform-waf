@@ -1,0 +1,40 @@
+# Example: waf_rule_group module usage
+```hcl
+module "custom_rule_group" {
+  source  = "../modules/waf_rule_group"
+  name    = "custom-sqli-group"
+  scope   = "REGIONAL"
+  rules = [
+    {
+      name         = "BlockSQLInjection",
+      priority     = 1,
+      statement    = "sqli_match_statement { field_to_match { body {} } text_transformations { priority = 0 type = \"NONE\" } }",
+      action       = "block",
+      metric_name  = "block_sqli"
+    },
+    {
+      name         = "BlockXSS",
+      priority     = 2,
+      statement    = "xss_match_statement { field_to_match { uri_path {} } text_transformations { priority = 0 type = \"NONE\" } }",
+      action       = "block",
+      metric_name  = "block_xss"
+    }
+  ]
+  tags = {
+    Environment = "prod"
+  }
+}
+```
+
+# Example: waf_acl module usage with rule_group_arn_list from module
+```hcl
+module "waf_acl" {
+  source              = "../modules/waf_acl"
+  name                = var.name
+  scope               = var.scope
+  default_action      = var.default_action
+  rule_group_arn_list = [module.custom_rule_group.arn]
+  alb_arn_list        = var.alb_arn_list
+  tags                = var.tags
+}
+```

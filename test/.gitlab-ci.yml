@@ -1,0 +1,45 @@
+stages:
+  - validate
+  - plan
+  - test
+
+variables:
+  TF_VERSION: "1.6.6"
+  TF_PLUGIN_CACHE_DIR: "$CI_PROJECT_DIR/.terraform.d/plugin-cache"
+
+before_script:
+  - terraform version
+
+validate_priority_test:
+  stage: validate
+  script:
+    - terraform -chdir=examples/invalid_priority init -backend=false
+    - terraform -chdir=examples/invalid_priority validate
+  allow_failure: false
+  tags: [terraform]
+
+plan_invalid_should_fail:
+  stage: plan
+  script:
+    - terraform -chdir=examples/invalid_priority init -backend=false
+    - terraform -chdir=examples/invalid_priority plan
+  allow_failure: true
+  tags: [terraform]
+
+plan_valid_should_succeed:
+  stage: plan
+  script:
+    - terraform -chdir=examples/with_custom_rule_group init -backend=false
+    - terraform -chdir=examples/with_custom_rule_group plan
+  allow_failure: false
+  tags: [terraform]
+
+terratest:
+  image: golang:1.21
+  stage: test
+  script:
+    - apt-get update && apt-get install -y unzip wget
+    - wget https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip
+    - unzip terraform_${TF_VERSION}_linux_amd64.zip && mv terraform /usr/local/bin/
+    - cd test && go mod tidy && go test -v
+  tags: [terraform]
