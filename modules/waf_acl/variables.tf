@@ -40,4 +40,5 @@ variable "log_group_retention_in_days" {
 variable "kms_key_id" {
   type    = string
   default = null
+  description = "KMS Key ID to encrypt the CloudWatch Log Group if created."
 }
