@@ -1,0 +1,23 @@
+stages:
+  - validate
+  - deploy
+
+variables:
+  TF_ROOT: "examples/basic"
+
+validate:
+  stage: validate
+  script:
+    - terraform init $TF_ROOT
+    - terraform validate $TF_ROOT
+
+plan:
+  stage: deploy
+  script:
+    - terraform plan -input=false -out=tfplan $TF_ROOT
+
+apply:
+  stage: deploy
+  when: manual
+  script:
+    - terraform apply -input=false tfplan
