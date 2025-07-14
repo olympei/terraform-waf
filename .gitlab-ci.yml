@@ -1,23 +1,62 @@
 stages:
   - validate
-  - deploy
+  - tag
+  - package
+  - upload
 
 variables:
-  TF_ROOT: "examples/basic"
+  TERRAFORM_MODULE_SYSTEM: aws
+  TERRAFORM_MODULE_VERSION: ${CI_COMMIT_TAG}
 
 validate:
   stage: validate
+  image: hashicorp/terraform:light
   script:
-    - terraform init $TF_ROOT
-    - terraform validate $TF_ROOT
+    - terraform -chdir=modules/waf init && terraform -chdir=modules/waf validate
+    - terraform -chdir=modules/waf_rule_group init && terraform -chdir=modules/waf_rule_group validate
+    - terraform -chdir=modules/regex_pattern_set init && terraform -chdir=modules/regex_pattern_set validate
+    - terraform -chdir=modules/ip_set init && terraform -chdir=modules/ip_set validate
 
-plan:
-  stage: deploy
+tag_and_upload:
+  stage: tag
+  image: alpine:latest
   script:
-    - terraform plan -input=false -out=tfplan $TF_ROOT
+    - apk add --no-cache git
+    - VERSION=$(cat VERSION)
+    - TAG="v${VERSION}"
+    - echo "Tagging with ${TAG}"
+    - git config --global user.email "ci@example.com"
+    - git config --global user.name "GitLab CI"
+    - git tag -a "${TAG}" -m "Release ${TAG}"
+    - git push origin "${TAG}"
+  only:
+    - main
+    - master
 
-apply:
-  stage: deploy
-  when: manual
+package_modules:
+  stage: package
+  image: alpine:latest
   script:
-    - terraform apply -input=false tfplan
+    - apk add --no-cache tar
+    - mkdir -p dist
+    - for module in waf waf_rule_group regex_pattern_set ip_set; do \
+        tar -czf dist/terraform-${TERRAFORM_MODULE_SYSTEM}-${module}-${CI_COMMIT_TAG}.tgz -C modules/${module} .; \
+      done
+  artifacts:
+    paths:
+      - dist/
+  only:
+    - tags
+
+upload_modules:
+  stage: upload
+  image: curlimages/curl:latest
+  script:
+    - |
+      for module in waf waf_rule_group regex_pattern_set ip_set; do
+        curl --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+             --upload-file dist/terraform-${TERRAFORM_MODULE_SYSTEM}-${module}-${CI_COMMIT_TAG}.tgz \
+             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/terraform/modules/${module}/${TERRAFORM_MODULE_SYSTEM}/${CI_COMMIT_TAG}/file"
+      done
+  only:
+    - tags
