@@ -1,0 +1,46 @@
+stages:
+  - upload
+  - download
+
+variables:
+  FILE_NAME: large_file.tar.gz
+  CHUNK_SIZE_MB: 500
+  PACKAGE_NAME: chunked-artifact
+  PACKAGE_VERSION: 1.0.0
+  BASE_URL: "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/$PACKAGE_NAME/$PACKAGE_VERSION"
+
+upload_chunks:
+  stage: upload
+  script:
+    - echo "Creating large file for testing (adjust as needed)..."
+    - dd if=/dev/urandom of=./$FILE_NAME bs=1M count=1200
+    - ls -lh $FILE_NAME
+
+    - echo "Splitting into ${CHUNK_SIZE_MB}MB chunks..."
+    - split -b ${CHUNK_SIZE_MB}M $FILE_NAME "${FILE_NAME}.part"
+
+    - echo "Uploading chunks to GitLab Package Registry..."
+    - for chunk in ${FILE_NAME}.part*; do
+        echo "Uploading $chunk...";
+        curl --fail --header "JOB-TOKEN: $CI_JOB_TOKEN"              --upload-file $chunk              "$BASE_URL/$chunk";
+      done
+
+download_and_merge:
+  stage: download
+  script:
+    - echo "Downloading and merging chunks..."
+    - i=0
+    - while true; do
+        CHUNK_NAME="${FILE_NAME}.part$(printf "%02d" $i)";
+        CHUNK_URL="$BASE_URL/$CHUNK_NAME";
+        echo "Downloading $CHUNK_NAME...";
+        curl --fail --header "JOB-TOKEN: $CI_JOB_TOKEN"              --silent --output "$CHUNK_NAME"              "$CHUNK_URL" || break;
+        i=$((i + 1));
+      done
+
+    - echo "Merging chunks..."
+    - cat ${FILE_NAME}.part* > $FILE_NAME
+    - ls -lh $FILE_NAME
+
+    - echo "Verifying file (optional)..."
+    - sha256sum $FILE_NAME
