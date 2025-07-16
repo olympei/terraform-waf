@@ -25,7 +25,7 @@ variable "custom_rules" {
 variable "use_templatefile_rendering" {
   description = "Enable templatefile rendering for rule statements"
   type        = bool
-  default     = true
+  default     = false
 }
 ```
 variable "use_rendered_rules" { type = bool default = false }

@@ -1,0 +1,44 @@
+%{ if statement != "" }${statement}%{ else }
+%{ if type == "sqli" }sqli_match_statement {
+  field_to_match {
+    ${field_to_match} {}
+  }
+  text_transformations {
+    priority = 0
+    type     = "NONE"
+  }
+}
+%{ else if type == "xss" }xss_match_statement {
+  field_to_match {
+    ${field_to_match} {}
+  }
+  text_transformations {
+    priority = 0
+    type     = "NONE"
+  }
+}
+%{ else if type == "ip_block" }ip_set_reference_statement {
+  arn = "${ip_set_arn}"
+}
+%{ else if type == "regex" }regex_pattern_set_reference_statement {
+  arn = "${regex_pattern_set}"
+  field_to_match {
+    ${field_to_match} {}
+  }
+  text_transformations {
+    priority = 0
+    type     = "NONE"
+  }
+}
+%{ else if type == "byte_match" }byte_match_statement {
+  search_string = "${search_string}"
+  field_to_match {
+    ${field_to_match} {}
+  }
+  positional_constraint = "CONTAINS"
+  text_transformations {
+    priority = 0
+    type     = "NONE"
+  }
+}
+%{ endif }%{ endif }

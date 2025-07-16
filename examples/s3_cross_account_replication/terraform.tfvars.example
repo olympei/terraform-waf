@@ -1,0 +1,22 @@
+# Example terraform.tfvars file
+# Copy this to terraform.tfvars and update with your values
+
+source_region      = "us-east-1"
+destination_region = "us-west-2"
+
+source_bucket_name      = "my-source-bucket-12345"
+destination_bucket_name = "my-destination-bucket-12345"
+destination_account_id  = "123456789012"
+
+destination_storage_class = "STANDARD_IA"
+replication_prefix       = "data/"
+
+create_source_kms_key      = true
+create_destination_kms_key = true
+
+tags = {
+  Environment = "production"
+  Project     = "s3-cross-account-replication"
+  Owner       = "data-team"
+  ManagedBy   = "terraform"
+}
