@@ -5,7 +5,7 @@ stages:
   - upload
 
 variables:
-  TERRAFORM_MODULE_SYSTEM: aws
+  TERRAFORM_MODULE_SYSTEM: ${TERRAFORM_MODULE_SYSTEM:-aws}
   TERRAFORM_MODULE_VERSION: ${CI_COMMIT_TAG}
 
 validate:
@@ -27,7 +27,9 @@ tag_and_upload:
     - echo "Tagging with ${TAG}"
     - git config --global user.email "ci@example.com"
     - git config --global user.name "GitLab CI"
-    - git tag -a "${TAG}" -m "Release ${TAG}"
+    - git remote set-url origin https://${GITLAB_PAT}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git
+    - git fetch origin
+    - git tag -a "${TAG}" -m "Release ${TAG}" || echo "Tag ${TAG} already exists"
     - git push origin "${TAG}"
   only:
     - main
@@ -37,9 +39,10 @@ package_modules:
   stage: package
   image: alpine:latest
   script:
+    - apk add --no-cache tar
     - mkdir -p dist
     - for module in waf waf_rule_group regex_pattern_set ip_set; do \
-        tar -czf dist/terraform-${TERRAFORM_MODULE_SYSTEM}-${module}-${CI_COMMIT_TAG}.tgz -C modules/${module} .; \
+        tar -czf dist/terraform-${TERRAFORM_MODULE_SYSTEM}-${module}-${TERRAFORM_MODULE_VERSION}.tgz -C modules/${module} .; \
       done
   artifacts:
     paths:
@@ -54,8 +57,8 @@ upload_modules:
     - |
       for module in waf waf_rule_group regex_pattern_set ip_set; do
         curl --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
-             --upload-file dist/terraform-${TERRAFORM_MODULE_SYSTEM}-${module}-${CI_COMMIT_TAG}.tgz \
-             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/terraform/modules/${module}/${TERRAFORM_MODULE_SYSTEM}/${CI_COMMIT_TAG}/file"
+             --upload-file dist/terraform-${TERRAFORM_MODULE_SYSTEM}-${module}-${TERRAFORM_MODULE_VERSION}.tgz \
+             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/terraform/modules/${module}/${TERRAFORM_MODULE_SYSTEM}/${TERRAFORM_MODULE_VERSION}/file"
       done
   only:
     - tags
