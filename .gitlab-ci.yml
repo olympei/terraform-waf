@@ -16,7 +16,6 @@ validate:
     - terraform -chdir=modules/waf_rule_group init && terraform -chdir=modules/waf_rule_group validate
     - terraform -chdir=modules/regex_pattern_set init && terraform -chdir=modules/regex_pattern_set validate
     - terraform -chdir=modules/ip_set init && terraform -chdir=modules/ip_set validate
-
 tag_and_upload:
   stage: tag
   image: alpine:latest
@@ -27,14 +26,13 @@ tag_and_upload:
     - echo "Tagging with ${TAG}"
     - git config --global user.email "ci@example.com"
     - git config --global user.name "GitLab CI"
-    - git remote set-url origin https://${GITLAB_PAT}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git
+    - git remote set-url origin "${CI_REPOSITORY_URL/https:\/\//https:\/\/${GITLAB_PAT}@}"
     - git fetch origin
     - git tag -a "${TAG}" -m "Release ${TAG}" || echo "Tag ${TAG} already exists"
     - git push origin "${TAG}"
   only:
     - main
-    - master
-
+    
 package_modules:
   stage: package
   image: alpine:latest
