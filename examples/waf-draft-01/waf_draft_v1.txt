@@ -1,0 +1,1579 @@
+# Root Module - main.tf
+# Modular AWS WAF Configuration with Rule Groups
+
+terraform {
+  required_version = ">= 1.0"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+# Local variables for common configuration
+locals {
+  common_tags = {
+    Project     = var.project_name
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+# IP Sets Module
+module "ip_sets" {
+  source = "./modules/ip-sets"
+
+  waf_name                = var.waf_name
+  environment            = var.environment
+  allowed_ip_addresses   = var.allowed_ip_addresses
+  blocked_ip_addresses   = var.blocked_ip_addresses
+  trusted_ip_addresses   = var.trusted_ip_addresses
+  
+  tags = local.common_tags
+}
+
+# Regex Patterns Module
+module "regex_patterns" {
+  source = "./modules/regex-patterns"
+
+  waf_name    = var.waf_name
+  environment = var.environment
+  
+  tags = local.common_tags
+}
+
+# Security Rule Groups Module
+module "security_rule_groups" {
+  source = "./modules/rule-groups"
+
+  waf_name              = var.waf_name
+  environment          = var.environment
+  whitelist_ip_set_arn = module.ip_sets.whitelist_ip_set_arn
+  blacklist_ip_set_arn = module.ip_sets.blacklist_ip_set_arn
+  trusted_ip_set_arn   = module.ip_sets.trusted_ip_set_arn
+  regex_pattern_set_arn = module.regex_patterns.malicious_patterns_arn
+  
+  tags = local.common_tags
+}
+
+# Main WAF Web ACL Module
+module "web_acl" {
+  source = "./modules/web-acl"
+
+  waf_name                    = var.waf_name
+  environment                = var.environment
+  rate_limit_requests        = var.rate_limit_requests
+  blocked_countries          = var.blocked_countries
+  max_request_body_size      = var.max_request_body_size
+  max_header_size           = var.max_header_size
+  
+  # Rule Groups
+  ip_filtering_rule_group_arn    = module.security_rule_groups.ip_filtering_rule_group_arn
+  xss_protection_rule_group_arn  = module.security_rule_groups.xss_protection_rule_group_arn
+  sqli_protection_rule_group_arn = module.security_rule_groups.sqli_protection_rule_group_arn
+  custom_rules_rule_group_arn    = module.security_rule_groups.custom_rules_rule_group_arn
+  
+  tags = local.common_tags
+}
+
+# Logging Module
+module "waf_logging" {
+  source = "./modules/logging"
+
+  waf_name    = var.waf_name
+  environment = var.environment
+  web_acl_arn = module.web_acl.web_acl_arn
+  
+  log_retention_days = var.log_retention_days
+  
+  tags = local.common_tags
+}
+
+# Root Module - variables.tf
+variable "project_name" {
+  description = "Name of the project"
+  type        = string
+  default     = "secure-web-app"
+}
+
+variable "environment" {
+  description = "Environment name (dev, staging, prod)"
+  type        = string
+  default     = "dev"
+}
+
+variable "waf_name" {
+  description = "Name for the WAF"
+  type        = string
+  default     = "comprehensive-waf"
+}
+
+variable "allowed_ip_addresses" {
+  description = "List of IP addresses to whitelist"
+  type        = list(string)
+  default     = [
+    "192.168.1.0/24",
+    "10.0.0.0/8"
+  ]
+}
+
+variable "blocked_ip_addresses" {
+  description = "List of IP addresses to block"
+  type        = list(string)
+  default     = [
+    "192.0.2.0/24",
+    "198.51.100.0/24"
+  ]
+}
+
+variable "trusted_ip_addresses" {
+  description = "List of trusted IP addresses (bypass most rules)"
+  type        = list(string)
+  default     = [
+    "203.0.113.0/24"
+  ]
+}
+
+variable "rate_limit_requests" {
+  description = "Rate limit requests per 5 minutes"
+  type        = number
+  default     = 2000
+}
+
+variable "blocked_countries" {
+  description = "List of country codes to block"
+  type        = list(string)
+  default     = ["CN", "RU", "KP"]
+}
+
+variable "max_request_body_size" {
+  description = "Maximum request body size in bytes"
+  type        = number
+  default     = 8192
+}
+
+variable "max_header_size" {
+  description = "Maximum header size in bytes"
+  type        = number
+  default     = 1024
+}
+
+variable "log_retention_days" {
+  description = "CloudWatch log retention in days"
+  type        = number
+  default     = 30
+}
+
+# Root Module - outputs.tf
+output "web_acl_arn" {
+  description = "ARN of the WAF Web ACL"
+  value       = module.web_acl.web_acl_arn
+}
+
+output "web_acl_id" {
+  description = "ID of the WAF Web ACL"
+  value       = module.web_acl.web_acl_id
+}
+
+output "web_acl_name" {
+  description = "Name of the WAF Web ACL"
+  value       = module.web_acl.web_acl_name
+}
+
+output "rule_groups" {
+  description = "Information about created rule groups"
+  value = {
+    ip_filtering    = module.security_rule_groups.ip_filtering_rule_group_arn
+    xss_protection  = module.security_rule_groups.xss_protection_rule_group_arn
+    sqli_protection = module.security_rule_groups.sqli_protection_rule_group_arn
+    custom_rules    = module.security_rule_groups.custom_rules_rule_group_arn
+  }
+}
+
+output "ip_sets" {
+  description = "Information about created IP sets"
+  value = {
+    whitelist = module.ip_sets.whitelist_ip_set_arn
+    blacklist = module.ip_sets.blacklist_ip_set_arn
+    trusted   = module.ip_sets.trusted_ip_set_arn
+  }
+}
+
+output "log_group_name" {
+  description = "Name of the CloudWatch log group"
+  value       = module.waf_logging.log_group_name
+}
+
+# ================================================
+# MODULE: IP Sets (modules/ip-sets/main.tf)
+# ================================================
+
+# IP Sets for whitelisting
+resource "aws_wafv2_ip_set" "whitelist_ip_set" {
+  name               = "${var.waf_name}-${var.environment}-whitelist"
+  description        = "IP addresses allowed to access the application"
+  scope              = "REGIONAL"
+  ip_address_version = "IPV4"
+
+  addresses = var.allowed_ip_addresses
+
+  tags = merge(var.tags, {
+    Name = "${var.waf_name}-${var.environment}-whitelist"
+    Type = "Whitelist"
+  })
+}
+
+# IP Sets for blacklisting
+resource "aws_wafv2_ip_set" "blacklist_ip_set" {
+  name               = "${var.waf_name}-${var.environment}-blacklist"
+  description        = "IP addresses blocked from accessing the application"
+  scope              = "REGIONAL"
+  ip_address_version = "IPV4"
+
+  addresses = var.blocked_ip_addresses
+
+  tags = merge(var.tags, {
+    Name = "${var.waf_name}-${var.environment}-blacklist"
+    Type = "Blacklist"
+  })
+}
+
+# IP Sets for trusted IPs (bypass most rules)
+resource "aws_wafv2_ip_set" "trusted_ip_set" {
+  name               = "${var.waf_name}-${var.environment}-trusted"
+  description        = "Trusted IP addresses that bypass most security rules"
+  scope              = "REGIONAL"
+  ip_address_version = "IPV4"
+
+  addresses = var.trusted_ip_addresses
+
+  tags = merge(var.tags, {
+    Name = "${var.waf_name}-${var.environment}-trusted"
+    Type = "Trusted"
+  })
+}
+
+# IP Sets Module Variables (modules/ip-sets/variables.tf)
+variable "waf_name" {
+  description = "Name of the WAF"
+  type        = string
+}
+
+variable "environment" {
+  description = "Environment name"
+  type        = string
+}
+
+variable "allowed_ip_addresses" {
+  description = "List of IP addresses to whitelist"
+  type        = list(string)
+}
+
+variable "blocked_ip_addresses" {
+  description = "List of IP addresses to block"
+  type        = list(string)
+}
+
+variable "trusted_ip_addresses" {
+  description = "List of trusted IP addresses"
+  type        = list(string)
+}
+
+variable "tags" {
+  description = "Tags to apply to resources"
+  type        = map(string)
+  default     = {}
+}
+
+# IP Sets Module Outputs (modules/ip-sets/outputs.tf)
+output "whitelist_ip_set_arn" {
+  description = "ARN of the whitelist IP set"
+  value       = aws_wafv2_ip_set.whitelist_ip_set.arn
+}
+
+output "blacklist_ip_set_arn" {
+  description = "ARN of the blacklist IP set"
+  value       = aws_wafv2_ip_set.blacklist_ip_set.arn
+}
+
+output "trusted_ip_set_arn" {
+  description = "ARN of the trusted IP set"
+  value       = aws_wafv2_ip_set.trusted_ip_set.arn
+}
+
+# ================================================
+# MODULE: Regex Patterns (modules/regex-patterns/main.tf)
+# ================================================
+
+# Regex Pattern Set for malicious patterns
+resource "aws_wafv2_regex_pattern_set" "malicious_patterns" {
+  name  = "${var.waf_name}-${var.environment}-malicious-patterns"
+  scope = "REGIONAL"
+
+  # SQL Injection patterns
+  regular_expression {
+    regex_string = "(?i)(union.*select|insert.*into|delete.*from|drop.*table|truncate.*table)"
+  }
+
+  regular_expression {
+    regex_string = "(?i)(select.*from|update.*set|alter.*table|create.*table)"
+  }
+
+  # XSS patterns
+  regular_expression {
+    regex_string = "(?i)(<script|javascript:|onload=|onerror=|onclick=|onmouseover=)"
+  }
+
+  regular_expression {
+    regex_string = "(?i)(eval\\(|alert\\(|confirm\\(|prompt\\()"
+  }
+
+  # Command injection patterns
+  regular_expression {
+    regex_string = "(?i)(cmd\\.exe|powershell|bash|/bin/sh|/bin/bash)"
+  }
+
+  regular_expression {
+    regex_string = "(?i)(&&|\\|\\||;|`|\\$\\()"
+  }
+
+  # Path traversal patterns
+  regular_expression {
+    regex_string = "(?i)(\\.\\.[\\/\\\\]|\\.\\.%2f|\\.\\.%5c|%2e%2e%2f)"
+  }
+
+  # File inclusion patterns
+  regular_expression {
+    regex_string = "(?i)(include.*\\(|require.*\\(|file_get_contents)"
+  }
+
+  tags = merge(var.tags, {
+    Name = "${var.waf_name}-${var.environment}-malicious-patterns"
+    Type = "RegexPatterns"
+  })
+}
+
+# Additional pattern set for user-agent filtering
+resource "aws_wafv2_regex_pattern_set" "suspicious_user_agents" {
+  name  = "${var.waf_name}-${var.environment}-suspicious-user-agents"
+  scope = "REGIONAL"
+
+  # Bot patterns
+  regular_expression {
+    regex_string = "(?i)(bot|crawler|spider|scraper|scanner)"
+  }
+
+  # Security scanners
+  regular_expression {
+    regex_string = "(?i)(nmap|sqlmap|nikto|dirb|gobuster|ffuf)"
+  }
+
+  # Suspicious tools
+  regular_expression {
+    regex_string = "(?i)(curl|wget|python-requests|go-http-client)"
+  }
+
+  tags = merge(var.tags, {
+    Name = "${var.waf_name}-${var.environment}-suspicious-user-agents"
+    Type = "UserAgentPatterns"
+  })
+}
+
+# Regex Patterns Module Variables (modules/regex-patterns/variables.tf)
+variable "waf_name" {
+  description = "Name of the WAF"
+  type        = string
+}
+
+variable "environment" {
+  description = "Environment name"
+  type        = string
+}
+
+variable "tags" {
+  description = "Tags to apply to resources"
+  type        = map(string)
+  default     = {}
+}
+
+# Regex Patterns Module Outputs (modules/regex-patterns/outputs.tf)
+output "malicious_patterns_arn" {
+  description = "ARN of the malicious patterns regex set"
+  value       = aws_wafv2_regex_pattern_set.malicious_patterns.arn
+}
+
+output "suspicious_user_agents_arn" {
+  description = "ARN of the suspicious user agents regex set"
+  value       = aws_wafv2_regex_pattern_set.suspicious_user_agents.arn
+}
+
+# ================================================
+# MODULE: Rule Groups (modules/rule-groups/main.tf)
+# ================================================
+
+# IP Filtering Rule Group
+resource "aws_wafv2_rule_group" "ip_filtering" {
+  name     = "${var.waf_name}-${var.environment}-ip-filtering"
+  scope    = "REGIONAL"
+  capacity = 50
+
+  rule {
+    name     = "AllowTrustedIPs"
+    priority = 1
+
+    action {
+      allow {}
+    }
+
+    statement {
+      ip_set_reference_statement {
+        arn = var.trusted_ip_set_arn
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "AllowTrustedIPs"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  rule {
+    name     = "AllowWhitelistIPs"
+    priority = 2
+
+    action {
+      allow {}
+    }
+
+    statement {
+      ip_set_reference_statement {
+        arn = var.whitelist_ip_set_arn
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "AllowWhitelistIPs"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  rule {
+    name     = "BlockBlacklistIPs"
+    priority = 3
+
+    action {
+      block {}
+    }
+
+    statement {
+      ip_set_reference_statement {
+        arn = var.blacklist_ip_set_arn
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "BlockBlacklistIPs"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  visibility_config {
+    cloudwatch_metrics_enabled = true
+    metric_name                = "${var.waf_name}-${var.environment}-ip-filtering"
+    sampled_requests_enabled   = true
+  }
+
+  tags = merge(var.tags, {
+    Name = "${var.waf_name}-${var.environment}-ip-filtering"
+    Type = "IPFiltering"
+  })
+}
+
+# XSS Protection Rule Group
+resource "aws_wafv2_rule_group" "xss_protection" {
+  name     = "${var.waf_name}-${var.environment}-xss-protection"
+  scope    = "REGIONAL"
+  capacity = 100
+
+  rule {
+    name     = "XSSDetectionBody"
+    priority = 1
+
+    action {
+      block {}
+    }
+
+    statement {
+      xss_match_statement {
+        field_to_match {
+          body {
+            oversize_handling = "CONTINUE"
+          }
+        }
+        text_transformation {
+          priority = 1
+          type     = "URL_DECODE"
+        }
+        text_transformation {
+          priority = 2
+          type     = "HTML_ENTITY_DECODE"
+        }
+        text_transformation {
+          priority = 3
+          type     = "LOWERCASE"
+        }
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "XSSDetectionBody"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  rule {
+    name     = "XSSDetectionURI"
+    priority = 2
+
+    action {
+      block {}
+    }
+
+    statement {
+      xss_match_statement {
+        field_to_match {
+          uri_path {}
+        }
+        text_transformation {
+          priority = 1
+          type     = "URL_DECODE"
+        }
+        text_transformation {
+          priority = 2
+          type     = "HTML_ENTITY_DECODE"
+        }
+        text_transformation {
+          priority = 3
+          type     = "LOWERCASE"
+        }
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "XSSDetectionURI"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  rule {
+    name     = "XSSDetectionQueryString"
+    priority = 3
+
+    action {
+      block {}
+    }
+
+    statement {
+      xss_match_statement {
+        field_to_match {
+          query_string {}
+        }
+        text_transformation {
+          priority = 1
+          type     = "URL_DECODE"
+        }
+        text_transformation {
+          priority = 2
+          type     = "HTML_ENTITY_DECODE"
+        }
+        text_transformation {
+          priority = 3
+          type     = "LOWERCASE"
+        }
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "XSSDetectionQueryString"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  visibility_config {
+    cloudwatch_metrics_enabled = true
+    metric_name                = "${var.waf_name}-${var.environment}-xss-protection"
+    sampled_requests_enabled   = true
+  }
+
+  tags = merge(var.tags, {
+    Name = "${var.waf_name}-${var.environment}-xss-protection"
+    Type = "XSSProtection"
+  })
+}
+
+# SQL Injection Protection Rule Group
+resource "aws_wafv2_rule_group" "sqli_protection" {
+  name     = "${var.waf_name}-${var.environment}-sqli-protection"
+  scope    = "REGIONAL"
+  capacity = 100
+
+  rule {
+    name     = "SQLIDetectionBody"
+    priority = 1
+
+    action {
+      block {}
+    }
+
+    statement {
+      sqli_match_statement {
+        field_to_match {
+          body {
+            oversize_handling = "CONTINUE"
+          }
+        }
+        text_transformation {
+          priority = 1
+          type     = "URL_DECODE"
+        }
+        text_transformation {
+          priority = 2
+          type     = "HTML_ENTITY_DECODE"
+        }
+        text_transformation {
+          priority = 3
+          type     = "LOWERCASE"
+        }
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "SQLIDetectionBody"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  rule {
+    name     = "SQLIDetectionURI"
+    priority = 2
+
+    action {
+      block {}
+    }
+
+    statement {
+      sqli_match_statement {
+        field_to_match {
+          uri_path {}
+        }
+        text_transformation {
+          priority = 1
+          type     = "URL_DECODE"
+        }
+        text_transformation {
+          priority = 2
+          type     = "HTML_ENTITY_DECODE"
+        }
+        text_transformation {
+          priority = 3
+          type     = "LOWERCASE"
+        }
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "SQLIDetectionURI"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  rule {
+    name     = "SQLIDetectionQueryString"
+    priority = 3
+
+    action {
+      block {}
+    }
+
+    statement {
+      sqli_match_statement {
+        field_to_match {
+          query_string {}
+        }
+        text_transformation {
+          priority = 1
+          type     = "URL_DECODE"
+        }
+        text_transformation {
+          priority = 2
+          type     = "HTML_ENTITY_DECODE"
+        }
+        text_transformation {
+          priority = 3
+          type     = "LOWERCASE"
+        }
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "SQLIDetectionQueryString"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  visibility_config {
+    cloudwatch_metrics_enabled = true
+    metric_name                = "${var.waf_name}-${var.environment}-sqli-protection"
+    sampled_requests_enabled   = true
+  }
+
+  tags = merge(var.tags, {
+    Name = "${var.waf_name}-${var.environment}-sqli-protection"
+    Type = "SQLIProtection"
+  })
+}
+
+# Custom Rules Group
+resource "aws_wafv2_rule_group" "custom_rules" {
+  name     = "${var.waf_name}-${var.environment}-custom-rules"
+  scope    = "REGIONAL"
+  capacity = 200
+
+  rule {
+    name     = "CustomRegexPatterns"
+    priority = 1
+
+    action {
+      block {}
+    }
+
+    statement {
+      or_statement {
+        statement {
+          regex_pattern_set_reference_statement {
+            arn = var.regex_pattern_set_arn
+            field_to_match {
+              body {
+                oversize_handling = "CONTINUE"
+              }
+            }
+            text_transformation {
+              priority = 1
+              type     = "URL_DECODE"
+            }
+            text_transformation {
+              priority = 2
+              type     = "HTML_ENTITY_DECODE"
+            }
+            text_transformation {
+              priority = 3
+              type     = "LOWERCASE"
+            }
+          }
+        }
+
+        statement {
+          regex_pattern_set_reference_statement {
+            arn = var.regex_pattern_set_arn
+            field_to_match {
+              uri_path {}
+            }
+            text_transformation {
+              priority = 1
+              type     = "URL_DECODE"
+            }
+            text_transformation {
+              priority = 2
+              type     = "HTML_ENTITY_DECODE"
+            }
+            text_transformation {
+              priority = 3
+              type     = "LOWERCASE"
+            }
+          }
+        }
+
+        statement {
+          regex_pattern_set_reference_statement {
+            arn = var.regex_pattern_set_arn
+            field_to_match {
+              query_string {}
+            }
+            text_transformation {
+              priority = 1
+              type     = "URL_DECODE"
+            }
+            text_transformation {
+              priority = 2
+              type     = "HTML_ENTITY_DECODE"
+            }
+            text_transformation {
+              priority = 3
+              type     = "LOWERCASE"
+            }
+          }
+        }
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "CustomRegexPatterns"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  rule {
+    name     = "SizeRestrictions"
+    priority = 2
+
+    action {
+      block {}
+    }
+
+    statement {
+      or_statement {
+        statement {
+          size_constraint_statement {
+            field_to_match {
+              body {
+                oversize_handling = "CONTINUE"
+              }
+            }
+            comparison_operator = "GT"
+            size                = 8192
+            text_transformation {
+              priority = 1
+              type     = "NONE"
+            }
+          }
+        }
+
+        statement {
+          size_constraint_statement {
+            field_to_match {
+              single_header {
+                name = "user-agent"
+              }
+            }
+            comparison_operator = "GT"
+            size                = 1024
+            text_transformation {
+              priority = 1
+              type     = "NONE"
+            }
+          }
+        }
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "SizeRestrictions"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  visibility_config {
+    cloudwatch_metrics_enabled = true
+    metric_name                = "${var.waf_name}-${var.environment}-custom-rules"
+    sampled_requests_enabled   = true
+  }
+
+  tags = merge(var.tags, {
+    Name = "${var.waf_name}-${var.environment}-custom-rules"
+    Type = "CustomRules"
+  })
+}
+
+# Rule Groups Module Variables (modules/rule-groups/variables.tf)
+variable "waf_name" {
+  description = "Name of the WAF"
+  type        = string
+}
+
+variable "environment" {
+  description = "Environment name"
+  type        = string
+}
+
+variable "whitelist_ip_set_arn" {
+  description = "ARN of the whitelist IP set"
+  type        = string
+}
+
+variable "blacklist_ip_set_arn" {
+  description = "ARN of the blacklist IP set"
+  type        = string
+}
+
+variable "trusted_ip_set_arn" {
+  description = "ARN of the trusted IP set"
+  type        = string
+}
+
+variable "regex_pattern_set_arn" {
+  description = "ARN of the regex pattern set"
+  type        = string
+}
+
+variable "tags" {
+  description = "Tags to apply to resources"
+  type        = map(string)
+  default     = {}
+}
+
+# Rule Groups Module Outputs (modules/rule-groups/outputs.tf)
+output "ip_filtering_rule_group_arn" {
+  description = "ARN of the IP filtering rule group"
+  value       = aws_wafv2_rule_group.ip_filtering.arn
+}
+
+output "xss_protection_rule_group_arn" {
+  description = "ARN of the XSS protection rule group"
+  value       = aws_wafv2_rule_group.xss_protection.arn
+}
+
+output "sqli_protection_rule_group_arn" {
+  description = "ARN of the SQL injection protection rule group"
+  value       = aws_wafv2_rule_group.sqli_protection.arn
+}
+
+output "custom_rules_rule_group_arn" {
+  description = "ARN of the custom rules group"
+  value       = aws_wafv2_rule_group.custom_rules.arn
+}
+
+# ================================================
+# MODULE: Web ACL (modules/web-acl/main.tf)
+# ================================================
+
+# Main WAF Web ACL
+resource "aws_wafv2_web_acl" "main" {
+  name  = "${var.waf_name}-${var.environment}"
+  scope = "REGIONAL"
+
+  default_action {
+    allow {}
+  }
+
+  # Rule 1: IP Filtering Rule Group
+  rule {
+    name     = "IPFilteringRuleGroup"
+    priority = 1
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      rule_group_reference_statement {
+        arn = var.ip_filtering_rule_group_arn
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "IPFilteringRuleGroup"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  # Rule 2: AWS Managed Rules - Core Rule Set
+  rule {
+    name     = "AWSManagedRulesCommonRuleSet"
+    priority = 2
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesCommonRuleSet"
+        vendor_name = "AWS"
+
+        rule_action_override {
+          action_to_use {
+            count {}
+          }
+          name = "SizeRestrictions_BODY"
+        }
+
+        rule_action_override {
+          action_to_use {
+            count {}
+          }
+          name = "GenericRFI_BODY"
+        }
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "AWSManagedRulesCommonRuleSet"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  # Rule 3: AWS Managed Rules - Known Bad Inputs
+  rule {
+    name     = "AWSManagedRulesKnownBadInputsRuleSet"
+    priority = 3
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesKnownBadInputsRuleSet"
+        vendor_name = "AWS"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "AWSManagedRulesKnownBadInputsRuleSet"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  # Rule 4: AWS Managed Rules - SQL Injection
+  rule {
+    name     = "AWSManagedRulesSQLiRuleSet"
+    priority = 4
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesSQLiRuleSet"
+        vendor_name = "AWS"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "AWSManagedRulesSQLiRuleSet"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  # Rule 5: Custom XSS Protection Rule Group
+  rule {
+    name     = "XSSProtectionRuleGroup"
+    priority = 5
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      rule_group_reference_statement {
+        arn = var.xss_protection_rule_group_arn
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "XSSProtectionRuleGroup"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  # Rule 6: Custom SQL Injection Protection Rule Group
+  rule {
+    name     = "SQLIProtectionRuleGroup"
+    priority = 6
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      rule_group_reference_statement {
+        arn = var.sqli_protection_rule_group_arn
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "SQLIProtectionRuleGroup"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  # Rule 7: Custom Rules Group
+  rule {
+    name     = "CustomRulesGroup"
+    priority = 7
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      rule_group_reference_statement {
+        arn = var.custom_rules_rule_group_arn
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "CustomRulesGroup"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  # Rule 8: Rate Limiting
+  rule {
+    name     = "RateLimitRule"
+    priority = 8
+
+    action {
+      block {}
+    }
+
+    statement {
+      rate_based_statement {
+        limit              = var.rate_limit_requests
+        aggregate_key_type = "IP"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "RateLimitRule"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  # Rule 9: Geolocation Blocking
+  rule {
+    name     = "BlockSpecificCountries"
+    priority = 9
+
+    action {
+      block {}
+    }
+
+    statement {
+      geo_match_statement {
+        country_codes = var.blocked_countries
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "BlockSpecificCountries"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  # Rule 10: AWS Managed Rules - Amazon IP Reputation List
+  rule {
+    name     = "AWSManagedRulesAmazonIpReputationList"
+    priority = 10
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesAmazonIpReputationList"
+        vendor_name = "AWS"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "AWSManagedRulesAmazonIpReputationList"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  # Rule 11: AWS Managed Rules - Anonymous IP List
+  rule {
+    name     = "AWSManagedRulesAnonymousIpList"
+    priority = 11
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesAnonymousIpList"
+        vendor_name = "AWS"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "AWSManagedRulesAnonymousIpList"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  tags = merge(var.tags, {
+    Name = "${var.waf_name}-${var.environment}"
+    Type = "WebACL"
+  })
+
+  visibility_config {
+    cloudwatch_metrics_enabled = true
+    metric_name                = "${var.waf_name}-${var.environment}"
+    sampled_requests_enabled   = true
+  }
+}
+
+# Web ACL Module Variables (modules/web-acl/variables.tf)
+variable "waf_name" {
+  description = "Name of the WAF"
+  type        = string
+}
+
+variable "environment" {
+  description = "Environment name"
+  type        = string
+}
+
+variable "rate_limit_requests" {
+  description = "Rate limit requests per 5 minutes"
+  type        = number
+}
+
+variable "blocked_countries" {
+  description = "List of country codes to block"
+  type        = list(string)
+}
+
+variable "max_request_body_size" {
+  description = "Maximum request body size in bytes"
+  type        = number
+}
+
+variable "max_header_size" {
+  description = "Maximum header size in bytes"
+  type        = number
+}
+
+variable "ip_filtering_rule_group_arn" {
+  description = "ARN of the IP filtering rule group"
+  type        = string
+}
+
+variable "xss_protection_rule_group_arn" {
+  description = "ARN of the XSS protection rule group"
+  type        = string
+}
+
+variable "sqli_protection_rule_group_arn" {
+  description = "ARN of the SQL injection protection rule group"
+  type        = string
+}
+
+variable "custom_rules_rule_group_arn" {
+  description = "ARN of the custom rules group"
+  type        = string
+}
+
+variable "tags" {
+  description = "Tags to apply to resources"
+  type        = map(string)
+  default     = {}
+}
+
+# Web ACL Module Outputs (modules/web-acl/outputs.tf)
+output "web_acl_arn" {
+  description = "ARN of the WAF Web ACL"
+  value       = aws_wafv2_web_acl.main.arn
+}
+
+output "web_acl_id" {
+  description = "ID of the WAF Web ACL"
+  value       = aws_wafv2_web_acl.main.id
+}
+
+output "web_acl_name" {
+  description = "Name of the WAF Web ACL"
+  value       = aws_wafv2_web_acl.main.name
+}
+
+# ================================================
+# MODULE: Logging (modules/logging/main.tf)
+# ================================================
+
+# CloudWatch Log Group for WAF
+resource "aws_cloudwatch_log_group" "waf_logs" {
+  name              = "/aws/wafv2/${var.waf_name}-${var.environment}"
+  retention_in_days = var.log_retention_days
+
+  tags = merge(var.tags, {
+    Name = "${var.waf_name}-${var.environment}-logs"
+    Type = "LogGroup"
+  })
+}
+
+# WAF Logging Configuration
+resource "aws_wafv2_web_acl_logging_configuration" "main" {
+  resource_arn            = var.web_acl_arn
+  log_destination_configs = [aws_cloudwatch_log_group.waf_logs.arn]
+
+  # Redact sensitive information
+  redacted_fields {
+    single_header {
+      name = "authorization"
+    }
+  }
+
+  redacted_fields {
+    single_header {
+      name = "cookie"
+    }
+  }
+
+  redacted_fields {
+    single_header {
+      name = "x-api-key"
+    }
+  }
+
+  redacted_fields {
+    single_header {
+      name = "x-forwarded-for"
+    }
+  }
+
+  # Log only blocked requests to reduce costs
+  logging_filter {
+    default_behavior = "DROP"
+
+    filter {
+      behavior = "KEEP"
+      condition {
+        action_condition {
+          action = "BLOCK"
+        }
+      }
+      requirement = "MEETS_ANY"
+    }
+
+    filter {
+      behavior = "KEEP"
+      condition {
+        action_condition {
+          action = "COUNT"
+        }
+      }
+      requirement = "MEETS_ANY"
+    }
+  }
+}
+
+# CloudWatch Dashboard for WAF Monitoring
+resource "aws_cloudwatch_dashboard" "waf_dashboard" {
+  dashboard_name = "${var.waf_name}-${var.environment}-dashboard"
+
+  dashboard_body = jsonencode({
+    widgets = [
+      {
+        type   = "metric"
+        x      = 0
+        y      = 0
+        width  = 12
+        height = 6
+
+        properties = {
+          metrics = [
+            ["AWS/WAFV2", "AllowedRequests", "WebACL", "${var.waf_name}-${var.environment}", "Region", data.aws_region.current.name, "Rule", "ALL"],
+            [".", "BlockedRequests", ".", ".", ".", ".", ".", "."],
+            [".", "CountedRequests", ".", ".", ".", ".", ".", "."]
+          ]
+          view    = "timeSeries"
+          stacked = false
+          region  = data.aws_region.current.name
+          title   = "WAF Request Overview"
+          period  = 300
+          stat    = "Sum"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 0
+        y      = 6
+        width  = 12
+        height = 6
+
+        properties = {
+          metrics = [
+            ["AWS/WAFV2", "BlockedRequests", "WebACL", "${var.waf_name}-${var.environment}", "Region", data.aws_region.current.name, "Rule", "IPFilteringRuleGroup"],
+            [".", ".", ".", ".", ".", ".", ".", "XSSProtectionRuleGroup"],
+            [".", ".", ".", ".", ".", ".", ".", "SQLIProtectionRuleGroup"],
+            [".", ".", ".", ".", ".", ".", ".", "CustomRulesGroup"],
+            [".", ".", ".", ".", ".", ".", ".", "RateLimitRule"]
+          ]
+          view    = "timeSeries"
+          stacked = false
+          region  = data.aws_region.current.name
+          title   = "Blocked Requests by Rule"
+          period  = 300
+          stat    = "Sum"
+        }
+      }
+    ]
+  })
+}
+
+# Data source for current region
+data "aws_region" "current" {}
+
+# Logging Module Variables (modules/logging/variables.tf)
+variable "waf_name" {
+  description = "Name of the WAF"
+  type        = string
+}
+
+variable "environment" {
+  description = "Environment name"
+  type        = string
+}
+
+variable "web_acl_arn" {
+  description = "ARN of the WAF Web ACL"
+  type        = string
+}
+
+variable "log_retention_days" {
+  description = "CloudWatch log retention in days"
+  type        = number
+  default     = 30
+}
+
+variable "tags" {
+  description = "Tags to apply to resources"
+  type        = map(string)
+  default     = {}
+}
+
+# Logging Module Outputs (modules/logging/outputs.tf)
+output "log_group_name" {
+  description = "Name of the CloudWatch log group"
+  value       = aws_cloudwatch_log_group.waf_logs.name
+}
+
+output "log_group_arn" {
+  description = "ARN of the CloudWatch log group"
+  value       = aws_cloudwatch_log_group.waf_logs.arn
+}
+
+output "dashboard_url" {
+  description = "URL of the CloudWatch dashboard"
+  value       = "https://console.aws.amazon.com/cloudwatch/home?region=${data.aws_region.current.name}#dashboards:name=${aws_cloudwatch_dashboard.waf_dashboard.dashboard_name}"
+}
+
+# ================================================
+# TERRAFORM CONFIGURATION FILES
+# ================================================
+
+# terraform.tfvars.example
+project_name = "my-secure-app"
+environment  = "production"
+waf_name     = "comprehensive-waf"
+
+# IP Configuration
+allowed_ip_addresses = [
+  "192.168.1.0/24",    # Office network
+  "10.0.0.0/8",        # VPC network
+  "172.16.0.0/12"      # Private network
+]
+
+blocked_ip_addresses = [
+  "192.0.2.0/24",      # Known malicious range
+  "198.51.100.0/24"    # Blocked test range
+]
+
+trusted_ip_addresses = [
+  "203.0.113.0/24"     # Admin/trusted network
+]
+
+# Security Configuration
+rate_limit_requests   = 2000
+blocked_countries     = ["CN", "RU", "KP", "IR"]
+max_request_body_size = 8192
+max_header_size      = 1024
+log_retention_days   = 30
+
+# Directory Structure
+/*
+.
+├── main.tf
+├── variables.tf
+├── outputs.tf
+├── terraform.tfvars
+└── modules/
+    ├── ip-sets/
+    │   ├── main.tf
+    │   ├── variables.tf
+    │   └── outputs.tf
+    ├── regex-patterns/
+    │   ├── main.tf
+    │   ├── variables.tf
+    │   └── outputs.tf
+    ├── rule-groups/
+    │   ├── main.tf
+    │   ├── variables.tf
+    │   └── outputs.tf
+    ├── web-acl/
+    │   ├── main.tf
+    │   ├── variables.tf
+    │   └── outputs.tf
+    └── logging/
+        ├── main.tf
+        ├── variables.tf
+        └── outputs.tf
+*/
+
+# Usage Instructions
+/*
+1. Clone or create the directory structure above
+2. Copy the terraform.tfvars.example to terraform.tfvars and customize
+3. Initialize Terraform:
+   terraform init
+
+4. Plan the deployment:
+   terraform plan
+
+5. Apply the configuration:
+   terraform apply
+
+6. To associate with ALB:
+   resource "aws_lb" "main" {
+     # ... other configuration
+   }
+
+   resource "aws_wafv2_web_acl_association" "alb_association" {
+     resource_arn = aws_lb.main.arn
+     web_acl_arn  = module.web_acl.web_acl_arn
+   }
+
+7. To associate with API Gateway:
+   resource "aws_wafv2_web_acl_association" "api_gateway_association" {
+     resource_arn = aws_api_gateway_stage.example.arn
+     web_acl_arn  = module.web_acl.web_acl_arn
+   }
+*/
