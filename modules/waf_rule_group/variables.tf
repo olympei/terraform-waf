@@ -1,10 +1,34 @@
 
-variable "rule_group_name" { type = string }
-variable "scope" { type = string }
-variable "capacity" { type = number }
-variable "metric_name" { type = string }
-#variable "custom_rules" { type = list(map(any)) default = [] }
-```hcl
+variable "rule_group_name" { 
+  description = "Name of the WAF rule group"
+  type        = string 
+}
+
+variable "name" {
+  description = "Base name for resources (used for templated rule group)"
+  type        = string
+  default     = ""
+}
+
+variable "scope" { 
+  description = "Scope of the rule group (REGIONAL or CLOUDFRONT)"
+  type        = string 
+  validation {
+    condition     = contains(["REGIONAL", "CLOUDFRONT"], var.scope)
+    error_message = "Scope must be either REGIONAL or CLOUDFRONT."
+  }
+}
+
+variable "capacity" { 
+  description = "Capacity units for the rule group"
+  type        = number 
+}
+
+variable "metric_name" { 
+  description = "CloudWatch metric name for the rule group"
+  type        = string 
+}
+
 variable "custom_rules" {
   description = "List of custom rules of various types. Supports both shorthand (type-based) and full statement definitions."
   type = list(object({
@@ -27,6 +51,15 @@ variable "use_templatefile_rendering" {
   type        = bool
   default     = false
 }
-```
-variable "use_rendered_rules" { type = bool default = false }
-variable "tags" { type = map(string) default = {} }
+
+variable "use_rendered_rules" { 
+  description = "Enable rendered rules (deprecated - use use_templatefile_rendering instead)"
+  type        = bool 
+  default     = false 
+}
+
+variable "tags" { 
+  description = "Tags to apply to the rule group"
+  type        = map(string) 
+  default     = {} 
+}

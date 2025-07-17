@@ -26,7 +26,7 @@ resource "aws_wafv2_rule_group" "sql_injection" {
         field_to_match {
           all_query_arguments {}
         }
-        text_transformations {
+        text_transformation {
           priority = 0
           type     = "URL_DECODE"
         }

@@ -12,7 +12,3 @@ resource "aws_wafv2_regex_pattern_set" "this" {
   description = "Managed regex pattern set"
   tags        = var.tags
 }
-
-output "arn" {
-  value = aws_wafv2_regex_pattern_set.this.arn
-}

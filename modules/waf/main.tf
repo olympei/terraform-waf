@@ -14,20 +14,26 @@ resource "aws_cloudwatch_log_group" "this" {
 }
 
 # Local: Combined priorities for validation
-```hcl
 locals {
   inline_priorities      = [for r in var.custom_inline_rules : r.priority]
   rulegroup_priorities   = [for i, r in var.rule_group_arn_list : coalesce(r.priority, 100 + i)]
-  all_waf_priorities     = concat(local.inline_priorities, local.rulegroup_priorities)
+  aws_managed_priorities = [for r in var.aws_managed_rule_groups : r.priority]
+  all_waf_priorities     = concat(local.inline_priorities, local.rulegroup_priorities, local.aws_managed_priorities)
 }
-```
 
 resource "aws_wafv2_web_acl" "this" {
   name  = var.name
   scope = var.scope
 
   default_action {
-    ${var.default_action == "allow" ? "allow {}" : "block {}"}
+    dynamic "allow" {
+      for_each = var.default_action == "allow" ? [1] : []
+      content {}
+    }
+    dynamic "block" {
+      for_each = var.default_action == "block" ? [1] : []
+      content {}
+    }
   }
 
  dynamic "rule" {
@@ -57,7 +63,18 @@ resource "aws_wafv2_web_acl" "this" {
       name     = rule.value.name
       priority = rule.value.priority
       action {
-        ${rule.value.action == "block" ? "block {}" : rule.value.action == "count" ? "count {}" : "allow {}"}
+        dynamic "allow" {
+          for_each = rule.value.action == "allow" ? [1] : []
+          content {}
+        }
+        dynamic "block" {
+          for_each = rule.value.action == "block" ? [1] : []
+          content {}
+        }
+        dynamic "count" {
+          for_each = rule.value.action == "count" ? [1] : []
+          content {}
+        }
       }
       statement = rule.value.statement
       visibility_config {
@@ -75,7 +92,14 @@ resource "aws_wafv2_web_acl" "this" {
       priority = rule.value.priority
 
       override_action {
-        ${rule.value.override_action == "count" ? "count {}" : "none {}"}
+        dynamic "count" {
+          for_each = rule.value.override_action == "count" ? [1] : []
+          content {}
+        }
+        dynamic "none" {
+          for_each = rule.value.override_action == "none" ? [1] : []
+          content {}
+        }
       }
 
       statement {

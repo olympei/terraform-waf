@@ -7,7 +7,3 @@ resource "aws_wafv2_ip_set" "this" {
   description = "Managed IP block set"
   tags        = var.tags
 }
-
-output "arn" {
-  value = aws_wafv2_ip_set.this.arn
-}
