@@ -12,23 +12,18 @@ provider "aws" {
   region = "us-east-1"
 }
 
-module "waf" {
-  source  = "terraform-aws-waf/waf/aws"
-  version = "1.0.0"
-
-  acl_name       = "example-waf"
-  scope          = "REGIONAL"
-  metric_name    = "example-metrics"
-  tags           = { environment = "dev" }
-}
-
-module "waf_rule_group" {
-  source  = "terraform-aws-waf/waf_rule_group/aws"
-  version = "1.0.0"
-
-  rule_group_name = "example-rule-group"
-  scope           = "REGIONAL"
-  custom_rules = [
+# Variables for demonstration
+variable "custom_rules" {
+  description = "Custom rules for WAF rule group"
+  type = list(object({
+    name           = string
+    priority       = number
+    metric_name    = string
+    type           = string
+    field_to_match = string
+    action         = string
+  }))
+  default = [
     {
       name           = "BlockSQLi"
       priority       = 10
@@ -36,58 +31,124 @@ module "waf_rule_group" {
       type           = "sqli"
       field_to_match = "body"
       action         = "block"
+    },
+    {
+      name           = "BlockXSS"
+      priority       = 20
+      metric_name    = "block_xss"
+      type           = "xss"
+      field_to_match = "uri_path"
+      action         = "block"
     }
   ]
-  tags = { environment = "dev" }
 }
 
-module "regex_pattern_set" {
-  source  = "terraform-aws-waf/regex_pattern_set/aws"
-  version = "1.0.0"
+# Example using GitLab module registry (hypothetical)
+# In a real scenario, these would be published to a GitLab module registry
 
-  name     = "regex-attack-patterns"
-  scope    = "REGIONAL"
-  patterns = ["select", "drop", "union"]
-  tags     = { environment = "dev" }
-}
-
-
-
-
-
+# WAF Module
 module "waf" {
-  source  = "git::https://gitlab.com/your-namespace/your-repo.git//modules/waf?ref=v1.0.0"
+  # In real usage, this would be from GitLab module registry:
+  # source = "git::https://gitlab.com/your-namespace/terraform-waf-modules.git//modules/waf?ref=v1.0.0"
+  
+  # For this example, using local modules
+  source = "../../modules/waf"
 
-  acl_name       = "my-waf"
-  scope          = "REGIONAL"
-  metric_name    = "waf-metrics"
-  custom_rules   = var.custom_rules
-  tags           = { environment = "dev" }
+  name                    = "gitlab-registry-waf"
+  scope                   = "REGIONAL"
+  default_action          = "allow"
+  aws_managed_rule_groups = []
+  rule_group_arn_list     = [
+    {
+      arn      = module.waf_rule_group.waf_rule_group_arn
+      name     = "custom-rule-group"
+      priority = 100
+    }
+  ]
+  custom_inline_rules = []
+  alb_arn_list       = []
+  
+  tags = {
+    Environment = "dev"
+    Source      = "GitLab Module Registry"
+  }
 }
 
+# WAF Rule Group Module
 module "waf_rule_group" {
-  source = "git::https://gitlab.com/your-namespace/your-repo.git//modules/waf_rule_group?ref=v1.0.0"
+  # In real usage, this would be from GitLab module registry:
+  # source = "git::https://gitlab.com/your-namespace/terraform-waf-modules.git//modules/waf_rule_group?ref=v1.0.0"
+  
+  # For this example, using local modules
+  source = "../../modules/waf_rule_group"
 
-  rule_group_name = "my-rule-group"
-  custom_rules    = var.custom_rules
-  tags            = { environment = "dev" }
+  rule_group_name = "gitlab-registry-rule-group"
+  name           = "gitlab-registry-rule-group"
+  scope          = "REGIONAL"
+  capacity       = 100
+  metric_name    = "GitLabRuleGroup"
+  custom_rules   = var.custom_rules
+  
+  tags = {
+    Environment = "dev"
+    Source      = "GitLab Module Registry"
+  }
 }
 
+# Regex Pattern Set Module
 module "regex_pattern_set" {
-  source = "git::https://gitlab.com/your-namespace/your-repo.git//modules/regex_pattern_set?ref=v1.0.0"
+  # In real usage, this would be from GitLab module registry:
+  # source = "git::https://gitlab.com/your-namespace/terraform-waf-modules.git//modules/regex_pattern_set?ref=v1.0.0"
+  
+  # For this example, using local modules
+  source = "../../modules/regex_pattern_set"
 
-  name     = "regex-pattern"
-  scope    = "REGIONAL"
-  patterns = ["select", "union", "drop"]
-  tags     = { environment = "dev" }
+  name          = "gitlab-regex-patterns"
+  scope         = "REGIONAL"
+  regex_strings = ["(?i)select.*from", "(?i)union.*select", "(?i)drop.*table"]
+  
+  tags = {
+    Environment = "dev"
+    Source      = "GitLab Module Registry"
+  }
 }
 
+# IP Set Module
 module "ip_set" {
-  source = "git::https://gitlab.com/your-namespace/your-repo.git//modules/ip_set?ref=v1.0.0"
+  # In real usage, this would be from GitLab module registry:
+  # source = "git::https://gitlab.com/your-namespace/terraform-waf-modules.git//modules/ip_set?ref=v1.0.0"
+  
+  # For this example, using local modules
+  source = "../../modules/ip_set"
 
-  name       = "block-ips"
-  ip_version = "IPV4"
-  addresses  = ["192.0.2.0/24", "198.51.100.0/24"]
-  scope      = "REGIONAL"
-  tags       = { environment = "dev" }
+  name                = "gitlab-blocked-ips"
+  scope               = "REGIONAL"
+  ip_address_version  = "IPV4"
+  addresses           = ["192.0.2.0/24", "198.51.100.0/24", "203.0.113.0/24"]
+  
+  tags = {
+    Environment = "dev"
+    Source      = "GitLab Module Registry"
+  }
+}
+
+# Outputs
+output "waf_arn" {
+  description = "ARN of the WAF Web ACL"
+  value       = module.waf.web_acl_arn
+}
+
+output "waf_rule_group_arn" {
+  description = "ARN of the WAF Rule Group"
+  value       = module.waf_rule_group.waf_rule_group_arn
+}
+
+output "regex_pattern_set_arn" {
+  description = "ARN of the Regex Pattern Set"
+  value       = module.regex_pattern_set.arn
+}
+
+output "ip_set_arn" {
+  description = "ARN of the IP Set"
+  value       = module.ip_set.arn
 }

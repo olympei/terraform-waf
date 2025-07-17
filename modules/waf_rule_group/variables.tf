@@ -35,15 +35,47 @@ variable "custom_rules" {
     name              = string
     priority          = number
     metric_name       = string
+    action            = optional(string, "block")            # block, allow, count
+    
+    # Type-based rule generation (simple approach)
     type              = optional(string)                     # "sqli", "xss", "ip_block", "regex", "byte_match"
-    statement         = optional(string)                     # Raw statement override
     field_to_match    = optional(string, "body")             # e.g., "uri_path", "query_string", "body"
     search_string     = optional(string)                     # For regex or byte match
     regex_pattern_set = optional(string)                     # ARN of regex pattern set
     ip_set_arn        = optional(string)                     # For ip_block
-    action            = optional(string, "block")            # block, allow, count
+    
+    # Custom statement configuration (advanced approach)
+    statement         = optional(string)                     # Deprecated - use statement_config instead
+    statement_config  = optional(object({
+      type                          = string                 # "sqli", "xss", "rate_based", "geo_match", "size_constraint"
+      field_to_match               = optional(string, "body") # "body", "uri_path", "query_string", "all_query_arguments"
+      text_transformation_priority = optional(number, 0)
+      text_transformation_type     = optional(string, "NONE")
+      
+      # Rate-based statement specific
+      rate_limit                   = optional(number, 2000)
+      aggregate_key_type          = optional(string, "IP")
+      
+      # Geo match statement specific
+      country_codes               = optional(list(string), [])
+      
+      # Size constraint statement specific
+      comparison_operator         = optional(string, "GT")
+      size                       = optional(number, 8192)
+    }))
   }))
   default = []
+  
+  validation {
+    condition = alltrue([
+      for rule in var.custom_rules : (
+        (lookup(rule, "type", null) != null && lookup(rule, "statement_config", null) == null) ||
+        (lookup(rule, "type", null) == null && lookup(rule, "statement_config", null) != null) ||
+        (lookup(rule, "type", null) == null && lookup(rule, "statement_config", null) == null && lookup(rule, "statement", null) != null)
+      )
+    ])
+    error_message = "Each rule must use either 'type' (for simple rules) OR 'statement_config' (for advanced rules) OR 'statement' (deprecated), but not multiple approaches."
+  }
 }
 
 variable "use_templatefile_rendering" {

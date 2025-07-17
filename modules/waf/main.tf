@@ -19,6 +19,22 @@ locals {
   rulegroup_priorities   = [for i, r in var.rule_group_arn_list : coalesce(r.priority, 100 + i)]
   aws_managed_priorities = [for r in var.aws_managed_rule_groups : r.priority]
   all_waf_priorities     = concat(local.inline_priorities, local.rulegroup_priorities, local.aws_managed_priorities)
+  
+  # Priority validation
+  unique_priorities      = distinct(local.all_waf_priorities)
+  has_duplicate_priorities = length(local.all_waf_priorities) != length(local.unique_priorities)
+}
+
+# Priority validation check
+resource "null_resource" "priority_validation" {
+  count = var.validate_priorities ? 1 : 0
+  
+  lifecycle {
+    precondition {
+      condition     = !local.has_duplicate_priorities
+      error_message = "Duplicate priorities detected across WAF rules. All priorities must be unique. Found priorities: ${join(", ", local.all_waf_priorities)}"
+    }
+  }
 }
 
 resource "aws_wafv2_web_acl" "this" {

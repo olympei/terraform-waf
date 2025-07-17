@@ -1,3 +1,7 @@
+provider "aws" {
+  region = "us-east-1"
+}
+
 module "regex" {
   source        = "../../modules/regex_pattern_set"
   name          = "bad-input-regex"
@@ -21,6 +25,7 @@ module "ipset" {
 module "waf_rule_group" {
   source              = "../../modules/waf_rule_group"
   rule_group_name     = "dev-rules"
+  name                = "dev-rules"
   scope               = "REGIONAL"
   capacity            = 100
   metric_name         = "devWAFGroup"
