@@ -4,7 +4,7 @@ Reusable WAFv2 ACL and RuleGroup modules supporting dynamic rules, managed rules
 
 ## Structure
 
-- `modules/waf_acl`: Defines the Web ACL and associates rule groups + ALB
+- `modules/waf`: Defines the Web ACL and associates rule groups + ALB
 - `modules/waf_rule_group`: Creates custom rule groups, supports dynamic or rendered rules
 - `examples/`: Demo configurations
 - `waf_envs_multi/`: Split dev/prod environments

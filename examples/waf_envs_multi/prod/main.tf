@@ -1,5 +1,5 @@
 module "waf_prod" { 
-    source = "../../modules/waf_acl" 
+    source = "../../modules/waf" 
     name = "prod-waf" 
     scope = "REGIONAL" 
     default_action = "allow" 

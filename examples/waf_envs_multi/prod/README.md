@@ -1,12 +1,12 @@
 # Prod Environment
 
-This environment deploys a WAFv2 Web ACL for production use. It uses the shared module from `../../modules/waf_acl`.
+This environment deploys a WAFv2 Web ACL for production use. It uses the shared module from `../../modules/waf`.
 
 ## Usage
 
 ```hcl
 module "waf_prod" {
-  source                = "../../modules/waf_acl"
+  source                = "../../modules/waf"
   name                  = "prod-waf"
   scope                 = "REGIONAL"
   default_action        = "allow"

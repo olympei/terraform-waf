@@ -1,5 +1,5 @@
 module "waf_basic" {
-  source                = "../../modules/waf_acl"
+  source                = "../../modules/waf"
   name                  = "basic-waf"
   scope                 = "REGIONAL"
   default_action        = "block"

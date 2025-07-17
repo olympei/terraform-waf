@@ -1,5 +1,5 @@
 module "waf_dev" { 
-    source = "../../modules/waf_acl" 
+    source = "../../modules/waf" 
     name = "dev-waf" 
     scope = "REGIONAL" 
     default_action = "allow" 

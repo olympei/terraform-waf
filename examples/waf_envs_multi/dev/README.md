@@ -1,12 +1,12 @@
 # Dev Environment
 
-This environment deploys a WAFv2 Web ACL for development use. It uses the shared module from `../../modules/waf_acl`.
+This environment deploys a WAFv2 Web ACL for development use. It uses the shared module from `../../modules/waf`.
 
 ## Usage
 
 ```hcl
 module "waf_dev" {
-  source                = "../../modules/waf_acl"
+  source                = "../../modules/waf"
   name                  = "dev-waf"
   scope                 = "REGIONAL"
   default_action        = "allow"

@@ -22,7 +22,7 @@ variable "tags" {
 }
 
 module "waf_acl" {
-  source         = "../../modules/waf_acl"
+  source         = "../../modules/waf"
   name           = var.name
   scope          = var.scope
   default_action = var.default_action

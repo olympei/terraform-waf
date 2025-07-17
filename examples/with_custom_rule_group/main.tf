@@ -47,7 +47,7 @@ module "custom_rule_group" {
 }
 
 module "waf_acl" {
-  source              = "../../modules/waf_acl"
+  source              = "../../modules/waf"
   name                = var.name
   scope               = var.scope
   default_action      = var.default_action

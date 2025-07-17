@@ -1,5 +1,5 @@
 module "web_acl" {
-  source = "../modules/waf_acl"
+  source = "../modules/waf"
   name   = "target-waf"
   scope  = "REGIONAL"
   default_action = "allow"
