@@ -1,3 +1,7 @@
+provider "aws" {
+  region = "us-east-1"
+}
+
 module "custom_rule_group" {
   source = "../../modules/waf_rule_group"
 
