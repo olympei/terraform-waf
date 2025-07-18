@@ -1,0 +1,145 @@
+# Enterprise Secure WAF Configuration
+# Copy this file to terraform.tfvars and customize for your environment
+
+# Basic Configuration
+name        = "enterprise-secure-waf"
+scope       = "REGIONAL"  # Use "CLOUDFRONT" for CloudFront distributions
+environment = "prod"      # dev, staging, prod
+
+# ALB Association
+# Replace with your actual ALB ARNs
+alb_arn_list = [
+  # "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/prod-web-app/1234567890123456",
+  # "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/prod-api-app/1234567890123456"
+]
+
+# Geographic Security Configuration
+# ISO 3166-1 alpha-2 country codes for high-risk countries
+high_risk_countries = [
+  "CN",  # China
+  "RU",  # Russia
+  "KP",  # North Korea
+  "IR",  # Iran
+  "SY",  # Syria
+  "CU",  # Cuba
+  "SD",  # Sudan
+  "MM",  # Myanmar
+  "AF",  # Afghanistan
+  "IQ"   # Iraq
+]
+
+# Rate Limiting Configuration (requests per 5 minutes)
+rate_limit_api    = 1000   # API endpoints
+rate_limit_web    = 5000   # Web traffic
+rate_limit_strict = 100    # Suspicious IPs
+
+# CloudWatch Logging Configuration
+enable_logging = true
+create_log_group = true  # Set to false to use existing log group
+
+# Option 1: Create New Log Group (Default)
+log_group_name = null  # Will auto-generate name if null: /aws/wafv2/{waf-name}
+log_group_retention_days = 90    # 90 days for enterprise compliance
+enable_kms_encryption = true     # Enable for sensitive environments
+kms_key_id = null               # Optional: specify existing KMS key ARN
+
+# Option 2: Use Existing Log Group (uncomment and set create_log_group = false)
+# create_log_group = false
+# existing_log_group_arn = "arn:aws:logs:us-east-1:123456789012:log-group:enterprise-security-logs:*"
+
+# Option 3: Disable Logging (not recommended for enterprise)
+# enable_logging = false
+
+# Resource Tagging
+tags = {
+  Environment     = "production"
+  Application     = "enterprise-web-platform"
+  SecurityLevel   = "maximum"
+  Compliance      = "pci-dss-sox-hipaa"
+  Owner          = "security-team"
+  CostCenter     = "security"
+  Criticality    = "high"
+  DataClass      = "confidential"
+  BackupRequired = "true"
+  ManagedBy      = "terraform"
+  Project        = "enterprise-security"
+}
+
+# Environment-Specific Examples:
+
+# Development Environment
+# name = "dev-enterprise-waf"
+# environment = "dev"
+# rate_limit_api = 5000
+# rate_limit_web = 20000
+# rate_limit_strict = 1000
+# log_group_retention_days = 7
+# enable_kms_encryption = false
+# high_risk_countries = ["CN", "RU", "KP"]  # Reduced list for dev
+
+# Staging Environment
+# name = "staging-enterprise-waf"
+# environment = "staging"
+# rate_limit_api = 2000
+# rate_limit_web = 10000
+# rate_limit_strict = 200
+# log_group_retention_days = 30
+# enable_kms_encryption = true
+
+# High-Security Production Environment
+# name = "prod-max-security-waf"
+# environment = "prod"
+# rate_limit_api = 500      # Very strict for high-security
+# rate_limit_web = 2000     # Conservative limits
+# rate_limit_strict = 50    # Very strict for suspicious IPs
+# log_group_retention_days = 365  # 1 year retention
+# enable_kms_encryption = true
+# high_risk_countries = [
+#   "CN", "RU", "KP", "IR", "SY", "CU", "SD", "MM", "AF", "IQ",
+#   "LY", "SO", "YE", "VE", "BY", "ZW"  # Extended list
+# ]
+
+# High-Traffic Production Environment
+# name = "prod-high-traffic-waf"
+# environment = "prod"
+# rate_limit_api = 5000     # Higher limits for high traffic
+# rate_limit_web = 25000    # Accommodate high traffic
+# rate_limit_strict = 500   # Balanced approach
+# log_group_retention_days = 90
+# enable_kms_encryption = true
+
+# CloudFront Configuration
+# name = "cloudfront-enterprise-waf"
+# scope = "CLOUDFRONT"
+# environment = "prod"
+# # Note: CloudFront WAFs must be deployed in us-east-1 region
+
+# Compliance-Focused Configuration
+# name = "compliance-enterprise-waf"
+# environment = "prod"
+# log_group_retention_days = 2557  # 7 years for some compliance requirements
+# enable_kms_encryption = true
+# tags = {
+#   Environment   = "production"
+#   Compliance    = "pci-dss-level-1"
+#   DataClass     = "restricted"
+#   AuditRequired = "true"
+#   SOXCompliant  = "true"
+#   HIPAARequired = "true"
+# }
+
+# Cost-Optimized Configuration (while maintaining security)
+# name = "cost-optimized-enterprise-waf"
+# environment = "prod"
+# rate_limit_api = 2000
+# rate_limit_web = 8000
+# rate_limit_strict = 200
+# log_group_retention_days = 30  # Shorter retention to reduce costs
+# enable_kms_encryption = false  # Disable KMS to reduce costs
+# high_risk_countries = ["CN", "RU", "KP", "IR"]  # Reduced list
+
+# Multi-Region Configuration
+# For multi-region deployments, create separate tfvars files:
+# - terraform-us-east-1.tfvars
+# - terraform-eu-west-1.tfvars
+# - terraform-ap-southeast-1.tfvars

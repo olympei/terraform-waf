@@ -3,7 +3,7 @@ provider "aws" {
 }
 
 module "regex" {
-  source        = "../../../modules/regex_pattern_set"
+  source        = "../../../modules/regex-pattern-set"
   name          = "dev-regex"
   scope         = "REGIONAL"
   regex_strings = ["(?i)drop", "(?i)malware"]
@@ -13,7 +13,7 @@ module "regex" {
 }
 
 module "ipset" {
-  source     = "../../../modules/ip_set"
+  source     = "../../../modules/ip-set"
   name       = "dev-ipset"
   scope      = "REGIONAL"
   addresses  = ["203.0.113.0/24"]
@@ -23,7 +23,7 @@ module "ipset" {
 }
 
 module "waf_rule_group" {
-  source              = "../../../modules/waf_rule_group"
+  source              = "../../../modules/waf-rule-group"
   rule_group_name     = "dev-waf-group"
   name                = "dev-waf-group"
   scope               = "REGIONAL"

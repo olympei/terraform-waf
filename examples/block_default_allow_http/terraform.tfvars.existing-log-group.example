@@ -1,0 +1,67 @@
+# Example terraform.tfvars for using an EXISTING CloudWatch log group
+# This configuration assumes you already have a CloudWatch log group created
+
+# Basic Configuration
+name  = "secure-block-default-waf"
+scope = "REGIONAL"
+
+# ALB Association (replace with your actual ALB ARNs)
+alb_arn_list = [
+  # "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-secure-app/1234567890123456"
+]
+
+# Geographic Allow List
+allowed_countries = [
+  "US",  # United States
+  "CA",  # Canada
+  "GB",  # United Kingdom
+  "DE",  # Germany
+  "FR"   # France
+]
+
+# Rate Limiting
+rate_limit_threshold = 2000
+
+# CloudWatch Logging Configuration - EXISTING LOG GROUP
+enable_logging = true
+create_log_group = false  # Use existing log group
+
+# IMPORTANT: Replace with your actual existing log group ARN
+existing_log_group_arn = "arn:aws:logs:us-east-1:123456789012:log-group:existing-waf-logs:*"
+
+# Note: When using existing log group, these variables are ignored:
+# - log_group_name
+# - log_group_retention_days  
+# - kms_key_id
+
+# Resource Tagging
+tags = {
+  Environment     = "production"
+  Application     = "secure-web-app"
+  SecurityLevel   = "high"
+  Compliance      = "pci-dss"
+  Owner          = "security-team"
+  CostCenter     = "security"
+  LogGroup       = "existing"
+  ManagedBy      = "terraform"
+}
+
+# Instructions for finding your existing log group ARN:
+# 1. List all log groups:
+#    aws logs describe-log-groups --query 'logGroups[*].[logGroupName,arn]' --output table
+#
+# 2. Find your specific log group:
+#    aws logs describe-log-groups --log-group-name-prefix "your-log-group-name"
+#
+# 3. Get the ARN and use it in existing_log_group_arn variable above
+#
+# Example log group ARNs:
+# - "arn:aws:logs:us-east-1:123456789012:log-group:my-existing-waf-logs:*"
+# - "arn:aws:logs:us-east-1:123456789012:log-group:/aws/waf/existing-logs:*"
+# - "arn:aws:logs:us-east-1:123456789012:log-group:security-team-waf-logs:*"
+
+# Benefits of using existing log group:
+# - Centralized logging with other security tools
+# - Existing log retention and encryption policies
+# - Shared log analysis and alerting infrastructure
+# - Cost optimization through shared log group usage

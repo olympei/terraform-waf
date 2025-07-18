@@ -1,0 +1,199 @@
+# Enterprise Zero-Trust WAF Configuration
+# CRITICAL: This configuration uses default_action = "block"
+# ALL traffic is blocked by default - test thoroughly!
+
+# Basic Configuration
+name        = "enterprise-zero-trust-waf"
+scope       = "REGIONAL"  # Use "CLOUDFRONT" for CloudFront distributions
+environment = "prod"      # dev, staging, prod
+
+# ALB Association (replace with your actual ALB ARNs)
+alb_arn_list = [
+  # "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/prod-web-app/1234567890123456"
+]
+
+# Zero-Trust Geographic Configuration
+# ONLY these countries will be allowed - all others blocked
+trusted_countries = [
+  "US",  # United States
+  "CA",  # Canada
+  "GB",  # United Kingdom
+  "DE",  # Germany
+  "FR",  # France
+  "AU",  # Australia
+  "JP",  # Japan
+  "NL",  # Netherlands
+  "SE",  # Sweden
+  "CH"   # Switzerland
+]
+
+# Trusted IP Ranges (optional - for specific known IPs)
+trusted_ip_ranges = [
+  # "10.0.0.0/8",     # Internal networks
+  # "172.16.0.0/12",  # Private networks
+  # "192.168.0.0/16"  # Local networks
+]
+
+# User-Agent Patterns (traffic must match these)
+allowed_user_agents = [
+  "Mozilla",  # Covers most legitimate browsers
+  "Chrome",   # Chrome-specific
+  "Safari",   # Safari-specific
+  "Edge",     # Microsoft Edge
+  "Firefox"   # Firefox-specific
+]
+
+# Rate Limiting Configuration (very strict for zero-trust)
+api_rate_limit    = 2000   # API endpoints (requests per 5 minutes)
+web_rate_limit    = 10000  # Web traffic (requests per 5 minutes)
+strict_rate_limit = 200    # Suspicious/flagged IPs (requests per 5 minutes)
+
+# CloudWatch Logging Configuration (REQUIRED for zero-trust)
+enable_logging = true
+create_log_group = true
+log_group_retention_days = 365  # 1 year for compliance
+enable_kms_encryption = true
+
+# Option: Use existing log group
+# create_log_group = false
+# existing_log_group_arn = "arn:aws:logs:us-east-1:123456789012:log-group:zero-trust-security-logs:*"
+
+# Resource Tagging
+tags = {
+  Environment     = "production"
+  Application     = "enterprise-web-platform"
+  SecurityModel   = "zero-trust"
+  SecurityLevel   = "maximum"
+  Compliance      = "pci-dss-sox-hipaa"
+  Owner          = "security-team"
+  CostCenter     = "security"
+  Criticality    = "critical"
+  DataClass      = "restricted"
+  ZeroTrust      = "true"
+  ManagedBy      = "terraform"
+}# 
+========================================
+# ENVIRONMENT-SPECIFIC CONFIGURATIONS
+# ========================================
+
+# Development Environment (More Permissive)
+# name = "dev-zero-trust-waf"
+# environment = "dev"
+# trusted_countries = ["US", "CA", "GB", "DE", "FR", "AU", "JP", "NL", "SE", "CH", "IN", "BR"]
+# api_rate_limit = 10000
+# web_rate_limit = 50000
+# strict_rate_limit = 1000
+# log_group_retention_days = 30
+# enable_kms_encryption = false
+
+# Staging Environment (Production-like)
+# name = "staging-zero-trust-waf"
+# environment = "staging"
+# trusted_countries = ["US", "CA", "GB", "DE", "FR", "AU", "JP", "NL", "SE", "CH"]
+# api_rate_limit = 5000
+# web_rate_limit = 25000
+# strict_rate_limit = 500
+# log_group_retention_days = 90
+
+# Maximum Security Production (Most Restrictive)
+# name = "max-security-zero-trust-waf"
+# environment = "prod"
+# trusted_countries = ["US"]  # US only
+# api_rate_limit = 1000       # Very strict
+# web_rate_limit = 5000       # Very strict
+# strict_rate_limit = 50      # Extremely strict
+# log_group_retention_days = 2557  # 7 years
+
+# High-Traffic Production (Balanced)
+# name = "high-traffic-zero-trust-waf"
+# environment = "prod"
+# trusted_countries = ["US", "CA", "GB", "DE", "FR", "AU", "JP", "NL", "SE", "CH", "IT", "ES"]
+# api_rate_limit = 5000
+# web_rate_limit = 50000
+# strict_rate_limit = 1000
+
+# Financial Services Configuration
+# name = "finserv-zero-trust-waf"
+# environment = "prod"
+# trusted_countries = ["US", "CA", "GB"]  # Limited to major financial centers
+# api_rate_limit = 1000
+# web_rate_limit = 5000
+# strict_rate_limit = 100
+# log_group_retention_days = 2557  # 7 years for compliance
+# tags = {
+#   Industry = "financial-services"
+#   Compliance = "pci-dss-level-1"
+#   DataClass = "financial"
+# }
+
+# Healthcare Configuration
+# name = "healthcare-zero-trust-waf"
+# environment = "prod"
+# trusted_countries = ["US"]  # US only for HIPAA
+# api_rate_limit = 2000
+# web_rate_limit = 10000
+# strict_rate_limit = 200
+# log_group_retention_days = 2557  # 7 years
+# tags = {
+#   Industry = "healthcare"
+#   Compliance = "hipaa-hitech"
+#   DataClass = "phi"
+# }
+
+# Government Configuration
+# name = "gov-zero-trust-waf"
+# environment = "prod"
+# trusted_countries = ["US"]  # US only
+# api_rate_limit = 1000
+# web_rate_limit = 5000
+# strict_rate_limit = 50
+# log_group_retention_days = 3653  # 10 years
+# enable_kms_encryption = true
+# tags = {
+#   Sector = "government"
+#   Classification = "controlled"
+#   Compliance = "fisma-fedramp"
+# }
+
+# ========================================
+# CRITICAL DEPLOYMENT WARNINGS
+# ========================================
+
+# WARNING 1: Default Action is BLOCK
+# - All traffic is blocked by default
+# - Only explicitly allowed patterns pass through
+# - Test extensively in staging before production
+
+# WARNING 2: Geographic Restrictions
+# - Only trusted_countries are allowed
+# - All other countries are blocked
+# - Ensure your user base is covered
+
+# WARNING 3: User-Agent Requirements
+# - Requests must have legitimate User-Agent headers
+# - API clients may need User-Agent headers added
+# - Monitor for blocked legitimate traffic
+
+# WARNING 4: Rate Limiting
+# - Very strict rate limits by default
+# - Monitor for legitimate users being rate limited
+# - Adjust based on actual traffic patterns
+
+# WARNING 5: Testing Requirements
+# - Deploy to staging first
+# - Test all user workflows
+# - Monitor CloudWatch logs continuously
+# - Have rollback procedures ready
+
+# ========================================
+# ROLLBACK PROCEDURES
+# ========================================
+
+# Emergency WAF Disable:
+# aws wafv2 disassociate-web-acl --resource-arn <ALB-ARN>
+
+# Change to Allow Mode:
+# aws wafv2 update-web-acl --scope REGIONAL --id <WAF-ID> --default-action Allow={}
+
+# Monitor Blocked Traffic:
+# aws logs filter-log-events --log-group-name /aws/wafv2/enterprise-zero-trust-waf --filter-pattern '{ $.action = "BLOCK" }'

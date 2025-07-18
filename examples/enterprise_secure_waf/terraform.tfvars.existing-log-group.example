@@ -1,0 +1,174 @@
+# Enterprise Secure WAF Configuration - EXISTING LOG GROUP
+# This configuration uses an existing CloudWatch log group for centralized logging
+
+# Basic Configuration
+name        = "enterprise-secure-waf"
+scope       = "REGIONAL"
+environment = "prod"
+
+# ALB Association (replace with your actual ALB ARNs)
+alb_arn_list = [
+  # "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/prod-web-app/1234567890123456"
+]
+
+# Geographic Security Configuration
+high_risk_countries = [
+  "CN", "RU", "KP", "IR", "SY", "CU", "SD", "MM", "AF", "IQ"
+]
+
+# Rate Limiting Configuration
+rate_limit_api    = 1000
+rate_limit_web    = 5000
+rate_limit_strict = 100
+
+# CloudWatch Logging Configuration - EXISTING LOG GROUP
+enable_logging = true
+create_log_group = false  # Use existing log group
+
+# IMPORTANT: Replace with your actual existing log group ARN
+existing_log_group_arn = "arn:aws:logs:us-east-1:123456789012:log-group:enterprise-security-logs:*"
+
+# Note: When using existing log group, these variables are ignored:
+# - log_group_name
+# - log_group_retention_days
+# - enable_kms_encryption
+# - kms_key_id
+
+# Resource Tagging
+tags = {
+  Environment     = "production"
+  Application     = "enterprise-web-platform"
+  SecurityLevel   = "maximum"
+  Compliance      = "pci-dss-sox-hipaa"
+  Owner          = "security-team"
+  CostCenter     = "security"
+  Criticality    = "high"
+  DataClass      = "confidential"
+  LogGroup       = "existing"
+  ManagedBy      = "terraform"
+}
+
+# ========================================
+# EXISTING LOG GROUP CONFIGURATION GUIDE
+# ========================================
+
+# Step 1: Find your existing log group ARN
+# List all log groups:
+# aws logs describe-log-groups --query 'logGroups[*].[logGroupName,arn]' --output table
+
+# Step 2: Find specific log group by name pattern:
+# aws logs describe-log-groups --log-group-name-prefix "enterprise"
+# aws logs describe-log-groups --log-group-name-prefix "security"
+# aws logs describe-log-groups --log-group-name-prefix "waf"
+
+# Step 3: Get the complete ARN and use it above
+# Example ARNs:
+# "arn:aws:logs:us-east-1:123456789012:log-group:enterprise-security-logs:*"
+# "arn:aws:logs:us-east-1:123456789012:log-group:/aws/security/waf-logs:*"
+# "arn:aws:logs:us-east-1:123456789012:log-group:centralized-security-logs:*"
+
+# ========================================
+# COMMON EXISTING LOG GROUP SCENARIOS
+# ========================================
+
+# Scenario 1: Centralized Security Logging
+# existing_log_group_arn = "arn:aws:logs:us-east-1:123456789012:log-group:centralized-security-logs:*"
+
+# Scenario 2: SIEM Integration
+# existing_log_group_arn = "arn:aws:logs:us-east-1:123456789012:log-group:siem-ingestion-logs:*"
+
+# Scenario 3: Compliance Logging
+# existing_log_group_arn = "arn:aws:logs:us-east-1:123456789012:log-group:compliance-audit-logs:*"
+
+# Scenario 4: Multi-Service Security Logs
+# existing_log_group_arn = "arn:aws:logs:us-east-1:123456789012:log-group:aws-security-services:*"
+
+# Scenario 5: Department-Specific Logging
+# existing_log_group_arn = "arn:aws:logs:us-east-1:123456789012:log-group:security-team-logs:*"
+
+# ========================================
+# BENEFITS OF USING EXISTING LOG GROUP
+# ========================================
+
+# 1. Centralized Logging:
+#    - All security logs in one place
+#    - Easier correlation and analysis
+#    - Unified log retention policies
+
+# 2. Cost Optimization:
+#    - Shared log group reduces costs
+#    - Consolidated log storage
+#    - Bulk log processing discounts
+
+# 3. Compliance:
+#    - Existing retention policies
+#    - Established encryption settings
+#    - Audit trail continuity
+
+# 4. Integration:
+#    - Existing SIEM integrations
+#    - Established alerting rules
+#    - Current log analysis tools
+
+# 5. Operational Efficiency:
+#    - Familiar log group structure
+#    - Existing access controls
+#    - Established monitoring dashboards
+
+# ========================================
+# VERIFICATION COMMANDS
+# ========================================
+
+# After deployment, verify logging is working:
+
+# 1. Check WAF is logging to the existing group:
+# aws logs describe-log-streams --log-group-name "enterprise-security-logs"
+
+# 2. View recent WAF logs:
+# aws logs tail enterprise-security-logs --follow
+
+# 3. Filter WAF-specific logs:
+# aws logs filter-log-events \
+#   --log-group-name enterprise-security-logs \
+#   --filter-pattern '{ $.webaclId exists }'
+
+# 4. Check log group permissions:
+# aws logs describe-resource-policies
+
+# ========================================
+# TROUBLESHOOTING
+# ========================================
+
+# If logging doesn't work:
+
+# 1. Verify log group exists:
+# aws logs describe-log-groups --log-group-name-prefix "enterprise-security-logs"
+
+# 2. Check WAF logging configuration:
+# aws wafv2 get-logging-configuration --resource-arn <WAF-ARN>
+
+# 3. Verify IAM permissions:
+# The WAF service needs permission to write to your log group
+
+# 4. Check log group ARN format:
+# Must end with ":*" for WAF logging
+# Example: "arn:aws:logs:us-east-1:123456789012:log-group:my-logs:*"
+
+# ========================================
+# MULTI-ENVIRONMENT EXAMPLES
+# ========================================
+
+# Development with existing log group:
+# name = "dev-enterprise-waf"
+# environment = "dev"
+# existing_log_group_arn = "arn:aws:logs:us-east-1:123456789012:log-group:dev-security-logs:*"
+
+# Staging with existing log group:
+# name = "staging-enterprise-waf"
+# environment = "staging"
+# existing_log_group_arn = "arn:aws:logs:us-east-1:123456789012:log-group:staging-security-logs:*"
+
+# Production with existing compliance log group:
+# name = "prod-enterprise-waf"
+# environment = "prod"
+# existing_log_group_arn = "arn:aws:logs:us-east-1:123456789012:log-group:prod-compliance-logs:*"

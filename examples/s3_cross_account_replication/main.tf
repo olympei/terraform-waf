@@ -30,7 +30,7 @@ provider "aws" {
 
 # S3 Cross-Account Replication Module
 module "s3_replication" {
-  source = "../../modules/s3_cross_account_replication"
+  source = "../../modules/s3-cross-account-replication"
   
   providers = {
     aws             = aws.source

@@ -1,0 +1,95 @@
+# Example terraform.tfvars for Block Default Allow HTTP WAF
+# Copy this file to terraform.tfvars and customize for your environment
+
+# Basic Configuration
+name  = "secure-block-default-waf"
+scope = "REGIONAL"  # Use "CLOUDFRONT" for CloudFront distributions
+
+# ALB Association (optional)
+# Replace with your actual ALB ARNs
+alb_arn_list = [
+  # "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-secure-app/1234567890123456"
+]
+
+# Geographic Allow List
+# ISO 3166-1 alpha-2 country codes
+allowed_countries = [
+  "US",  # United States
+  "CA",  # Canada
+  "GB",  # United Kingdom
+  "DE",  # Germany
+  "FR",  # France
+  "AU",  # Australia
+  "JP"   # Japan
+]
+
+# User Agent Patterns (currently using "Mozilla" to cover most browsers)
+# This could be expanded to include specific patterns
+allowed_user_agents = [
+  "Mozilla",
+  "Chrome",
+  "Safari",
+  "Edge",
+  "Firefox"
+]
+
+# Rate Limiting
+# Requests per 5-minute window per IP address
+rate_limit_threshold = 2000
+
+# CloudWatch Logging Configuration
+enable_logging = true
+create_log_group = true
+
+# Option 1: Create new log group (default)
+log_group_name = null  # Will auto-generate name if null
+log_group_retention_days = 30  # Valid values: 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653
+kms_key_id = null  # Optional: KMS key for log encryption
+
+# Option 2: Use existing log group (uncomment and set create_log_group = false)
+# create_log_group = false
+# existing_log_group_arn = "arn:aws:logs:us-east-1:123456789012:log-group:existing-waf-logs:*"
+
+# Resource Tagging
+tags = {
+  Environment     = "production"
+  Application     = "secure-web-app"
+  SecurityLevel   = "high"
+  Compliance      = "pci-dss"
+  Owner          = "security-team"
+  CostCenter     = "security"
+  BackupRequired = "true"
+  ManagedBy      = "terraform"
+}
+
+# Additional Configuration Examples:
+
+# For Development Environment:
+# name = "dev-block-default-waf"
+# allowed_countries = ["US", "CA", "GB", "DE", "FR", "AU", "JP", "IN", "BR"]
+# rate_limit_threshold = 5000
+# tags = {
+#   Environment = "development"
+#   Purpose     = "testing"
+#   AutoDelete  = "true"
+# }
+
+# For High-Security Production:
+# name = "prod-high-security-waf"
+# allowed_countries = ["US"]  # Only US traffic
+# rate_limit_threshold = 1000  # Stricter rate limiting
+# tags = {
+#   Environment   = "production"
+#   SecurityLevel = "maximum"
+#   Compliance    = "sox-hipaa-pci"
+# }
+
+# For API-Only Application:
+# name = "api-block-default-waf"
+# allowed_countries = ["US", "CA", "GB"]
+# rate_limit_threshold = 500  # Lower for API endpoints
+# tags = {
+#   Environment = "production"
+#   Type        = "api-gateway"
+#   Purpose     = "api-protection"
+# }

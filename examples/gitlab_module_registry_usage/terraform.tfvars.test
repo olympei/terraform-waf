@@ -1,0 +1,11 @@
+# Test configuration for validation
+custom_rules = [
+  {
+    name           = "TestBlockSQLi"
+    priority       = 10
+    metric_name    = "test_block_sqli"
+    type           = "sqli"
+    field_to_match = "body"
+    action         = "block"
+  }
+]

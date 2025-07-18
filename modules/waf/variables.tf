@@ -74,15 +74,130 @@ variable "custom_inline_rules" {
     name         = string
     priority     = number
     action       = string
-    rule_type    = string
-    statement    = string
+    rule_type    = optional(string)
+    statement    = optional(string)                     # Legacy string-based statement
     metric_name  = string
+    
+    # New object-based statement configuration
+    statement_config = optional(object({
+      # SQL Injection Match Statement
+      sqli_match_statement = optional(object({
+        field_to_match = object({
+          body                = optional(object({}))
+          uri_path           = optional(object({}))
+          query_string       = optional(object({}))
+          all_query_arguments = optional(object({}))
+          single_header      = optional(object({ name = string }))
+          method             = optional(object({}))
+        })
+        text_transformation = object({
+          priority = number
+          type     = string
+        })
+      }))
+      
+      # XSS Match Statement
+      xss_match_statement = optional(object({
+        field_to_match = object({
+          body                = optional(object({}))
+          uri_path           = optional(object({}))
+          query_string       = optional(object({}))
+          all_query_arguments = optional(object({}))
+          single_header      = optional(object({ name = string }))
+          method             = optional(object({}))
+        })
+        text_transformation = object({
+          priority = number
+          type     = string
+        })
+      }))
+      
+      # IP Set Reference Statement
+      ip_set_reference_statement = optional(object({
+        arn = string
+      }))
+      
+      # Regex Pattern Set Reference Statement
+      regex_pattern_set_reference_statement = optional(object({
+        arn = string
+        field_to_match = object({
+          body                = optional(object({}))
+          uri_path           = optional(object({}))
+          query_string       = optional(object({}))
+          all_query_arguments = optional(object({}))
+          single_header      = optional(object({ name = string }))
+          method             = optional(object({}))
+        })
+        text_transformation = object({
+          priority = number
+          type     = string
+        })
+      }))
+      
+      # Byte Match Statement
+      byte_match_statement = optional(object({
+        search_string = string
+        field_to_match = object({
+          body                = optional(object({}))
+          uri_path           = optional(object({}))
+          query_string       = optional(object({}))
+          all_query_arguments = optional(object({}))
+          single_header      = optional(object({ name = string }))
+          method             = optional(object({}))
+        })
+        positional_constraint = string
+        text_transformation = object({
+          priority = number
+          type     = string
+        })
+      }))
+      
+      # Rate Based Statement
+      rate_based_statement = optional(object({
+        limit              = number
+        aggregate_key_type = string
+      }))
+      
+      # Geo Match Statement
+      geo_match_statement = optional(object({
+        country_codes = list(string)
+      }))
+      
+      # Size Constraint Statement
+      size_constraint_statement = optional(object({
+        comparison_operator = string
+        size               = number
+        field_to_match = object({
+          body                = optional(object({}))
+          uri_path           = optional(object({}))
+          query_string       = optional(object({}))
+          all_query_arguments = optional(object({}))
+          single_header      = optional(object({ name = string }))
+          method             = optional(object({}))
+        })
+        text_transformation = object({
+          priority = number
+          type     = string
+        })
+      }))
+    }))
   }))
   default = []
-  description = "Inline rule definitions for common WAF rule types like SQLi, IP block, XSS, etc."
+  description = "Inline rule definitions for WAF. Supports both legacy string statements and new object-based statement configurations."
+  
   validation {
     condition = length(distinct([for r in var.custom_inline_rules : r.priority])) == length(var.custom_inline_rules)
     error_message = "Duplicate priorities detected in custom_inline_rules. All rule priorities must be unique."
+  }
+  
+  validation {
+    condition = alltrue([
+      for rule in var.custom_inline_rules : (
+        (lookup(rule, "statement", null) != null && lookup(rule, "statement_config", null) == null) ||
+        (lookup(rule, "statement", null) == null && lookup(rule, "statement_config", null) != null)
+      )
+    ])
+    error_message = "Each rule must use either 'statement' (legacy string) OR 'statement_config' (object), but not both."
   }
 }
 
