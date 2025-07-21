@@ -1,0 +1,79 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "WAFv2BasicAccess",
+      "Effect": "Allow",
+      "Action": [
+        "wafv2:CreateWebACL",
+        "wafv2:UpdateWebACL",
+        "wafv2:DeleteWebACL",
+        "wafv2:GetWebACL",
+        "wafv2:ListWebACLs",
+        "wafv2:CreateRuleGroup",
+        "wafv2:UpdateRuleGroup",
+        "wafv2:DeleteRuleGroup",
+        "wafv2:GetRuleGroup",
+        "wafv2:ListRuleGroups",
+        "wafv2:CreateIPSet",
+        "wafv2:UpdateIPSet",
+        "wafv2:DeleteIPSet",
+        "wafv2:GetIPSet",
+        "wafv2:ListIPSets",
+        "wafv2:CreateRegexPatternSet",
+        "wafv2:UpdateRegexPatternSet",
+        "wafv2:DeleteRegexPatternSet",
+        "wafv2:GetRegexPatternSet",
+        "wafv2:ListRegexPatternSets",
+        "wafv2:AssociateWebACL",
+        "wafv2:DisassociateWebACL",
+        "wafv2:ListResourcesForWebACL",
+        "wafv2:GetWebACLForResource",
+        "wafv2:TagResource",
+        "wafv2:UntagResource",
+        "wafv2:ListTagsForResource"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "BasicLoggingAccess",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams",
+        "logs:PutRetentionPolicy",
+        "logs:TagLogGroup"
+      ],
+      "Resource": [
+        "arn:aws:logs:*:*:log-group:/aws/wafv2/*",
+        "arn:aws:logs:*:*:log-group:/aws/wafv2/*:*"
+      ]
+    },
+    {
+      "Sid": "ALBAssociationAccess",
+      "Effect": "Allow",
+      "Action": [
+        "elasticloadbalancing:DescribeLoadBalancers",
+        "elasticloadbalancing:DescribeTargetGroups",
+        "elasticloadbalancing:DescribeListeners"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "BasicKMSAccess",
+      "Effect": "Allow",
+      "Action": [
+        "kms:CreateKey",
+        "kms:DescribeKey",
+        "kms:CreateAlias",
+        "kms:Encrypt",
+        "kms:Decrypt",
+        "kms:GenerateDataKey*"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

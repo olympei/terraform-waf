@@ -1,0 +1,165 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "WAFv2EnterpriseAccess",
+            "Effect": "Allow",
+            "Action": [
+                "wafv2:*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "EnterpriseLoggingAccess",
+            "Effect": "Allow",
+            "Action": [
+                "logs:*"
+            ],
+            "Resource": [
+                "arn:aws:logs:*:*:log-group:/aws/wafv2/*",
+                "arn:aws:logs:*:*:log-group:/aws/wafv2/*:*"
+            ]
+        },
+        {
+            "Sid": "EnterpriseKMSAccess",
+            "Effect": "Allow",
+            "Action": [
+                "kms:CreateKey",
+                "kms:DescribeKey",
+                "kms:GetKeyPolicy",
+                "kms:PutKeyPolicy",
+                "kms:CreateAlias",
+                "kms:DeleteAlias",
+                "kms:ListAliases",
+                "kms:UpdateAlias",
+                "kms:TagResource",
+                "kms:UntagResource",
+                "kms:ListResourceTags",
+                "kms:EnableKeyRotation",
+                "kms:DisableKeyRotation",
+                "kms:GetKeyRotationStatus",
+                "kms:Encrypt",
+                "kms:Decrypt",
+                "kms:ReEncrypt*",
+                "kms:GenerateDataKey*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "EnterpriseMonitoringAccess",
+            "Effect": "Allow",
+            "Action": [
+                "cloudwatch:PutMetricData",
+                "cloudwatch:GetMetricStatistics",
+                "cloudwatch:ListMetrics",
+                "cloudwatch:PutMetricAlarm",
+                "cloudwatch:DeleteAlarms",
+                "cloudwatch:DescribeAlarms",
+                "cloudwatch:DescribeAlarmsForMetric"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "ComplianceConfigAccess",
+            "Effect": "Allow",
+            "Action": [
+                "config:PutConfigRule",
+                "config:DeleteConfigRule",
+                "config:DescribeConfigRules",
+                "config:GetComplianceDetailsByConfigRule",
+                "config:GetComplianceSummaryByConfigRule"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "EventDrivenAutomationAccess",
+            "Effect": "Allow",
+            "Action": [
+                "events:PutRule",
+                "events:DeleteRule",
+                "events:DescribeRule",
+                "events:PutTargets",
+                "events:RemoveTargets",
+                "events:ListTargetsByRule"
+            ],
+            "Resource": [
+                "arn:aws:events:*:*:rule/waf-*",
+                "arn:aws:events:*:*:rule/WAF-*"
+            ]
+        },
+        {
+            "Sid": "EnterpriseResourceManagement",
+            "Effect": "Allow",
+            "Action": [
+                "resource-groups:CreateGroup",
+                "resource-groups:DeleteGroup",
+                "resource-groups:GetGroup",
+                "resource-groups:GetGroupQuery",
+                "resource-groups:ListGroups",
+                "resource-groups:UpdateGroup",
+                "resource-groups:UpdateGroupQuery",
+                "tag:GetResources",
+                "tag:TagResources",
+                "tag:UntagResources",
+                "tag:GetTagKeys",
+                "tag:GetTagValues"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "ConfigurationManagementAccess",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:GetParameter",
+                "ssm:GetParameters",
+                "ssm:GetParametersByPath",
+                "ssm:PutParameter",
+                "ssm:DeleteParameter",
+                "ssm:DescribeParameters"
+            ],
+            "Resource": [
+                "arn:aws:ssm:*:*:parameter/waf/*",
+                "arn:aws:ssm:*:*:parameter/WAF/*"
+            ]
+        },
+        {
+            "Sid": "LoadBalancerIntegrationAccess",
+            "Effect": "Allow",
+            "Action": [
+                "elasticloadbalancing:DescribeLoadBalancers",
+                "elasticloadbalancing:DescribeTargetGroups",
+                "elasticloadbalancing:DescribeListeners",
+                "elasticloadbalancing:DescribeRules",
+                "elasticloadbalancing:ModifyListener",
+                "elasticloadbalancing:ModifyRule"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "CloudFrontIntegrationAccess",
+            "Effect": "Allow",
+            "Action": [
+                "cloudfront:GetDistribution",
+                "cloudfront:GetDistributionConfig",
+                "cloudfront:ListDistributions",
+                "cloudfront:UpdateDistribution"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "APIGatewayIntegrationAccess",
+            "Effect": "Allow",
+            "Action": [
+                "apigateway:GET",
+                "apigateway:PUT",
+                "apigateway:POST",
+                "apigateway:DELETE",
+                "apigateway:PATCH"
+            ],
+            "Resource": [
+                "arn:aws:apigateway:*::/restapis/*/stages/*",
+                "arn:aws:apigateway:*::/v2/apis/*/stages/*"
+            ]
+        }
+    ]
+}

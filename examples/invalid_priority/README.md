@@ -1,220 +1,298 @@
-# Invalid Priority Example
+# Invalid Priority Example - Priority Validation Testing
 
-This example demonstrates the WAF module's priority validation feature. It intentionally creates WAF configurations with duplicate priorities to show how the validation system catches and prevents these conflicts.
+This example demonstrates comprehensive priority validation testing for AWS WAF configurations. It includes multiple test cases designed to trigger validation errors when rule priorities conflict, helping developers understand and test the priority validation logic in the WAF module.
 
-## Purpose
+## 🎯 Purpose
 
-WAF rules must have unique priorities within a Web ACL. This example shows:
+This example serves as a comprehensive test suite for priority validation functionality, demonstrating:
 
-1. **Priority Conflict Detection**: How the module detects duplicate priorities
-2. **Validation Errors**: Clear error messages when conflicts occur
-3. **Multiple Rule Types**: Validation across rule groups and AWS managed rules
-4. **Prevention**: Stops deployment before creating invalid configurations
+- **Priority Conflict Detection**: Various scenarios where rule priorities conflict
+- **Validation Logic Testing**: Ensuring the WAF module correctly identifies priority conflicts
+- **Error Handling**: Understanding how Terraform handles priority validation errors
+- **Best Practices**: Learning proper priority assignment patterns
 
-## Test Scenarios
+## 🏗️ Architecture Overview
 
-### Scenario 1: Rule Group Priority Conflicts
+The example creates 7 different WAF configurations, each testing specific priority conflict scenarios:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    PRIORITY VALIDATION TEST SUITE               │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
+│  │   Test Case 1   │  │   Test Case 2   │  │   Test Case 3   │ │
+│  │ Duplicate Rule  │  │ Duplicate AWS   │  │ Mixed Priority  │ │
+│  │ Group Priorities│  │ Managed Rules   │  │   Conflicts     │ │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
+│                                                                 │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
+│  │   Test Case 4   │  │   Test Case 5   │  │   Test Case 6   │ │
+│  │ Inline Rule     │  │   Edge Case     │  │ Valid Priorities│ │
+│  │   Conflicts     │  │   Conflicts     │  │ (Control Test)  │ │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
+│                                                                 │
+│  ┌─────────────────┐                                           │
+│  │   Test Case 7   │                                           │
+│  │  Sequential     │                                           │
+│  │   Conflicts     │                                           │
+│  └─────────────────┘                                           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## 📋 Test Cases
+
+### Test Case 1: Duplicate Rule Group Priorities
+**Module**: `waf_duplicate_rule_groups`
+- **Purpose**: Tests duplicate priorities in custom rule groups
+- **Conflict**: Two rule groups with priority 100
+- **Expected Result**: ❌ VALIDATION_ERROR
+
+### Test Case 2: Duplicate AWS Managed Rule Priorities
+**Module**: `waf_duplicate_aws_managed`
+- **Purpose**: Tests duplicate priorities in AWS managed rules
+- **Conflict**: Two AWS managed rules with priority 200
+- **Expected Result**: ❌ VALIDATION_ERROR
+
+### Test Case 3: Mixed Priority Conflicts
+**Module**: `waf_mixed_priority_conflicts`
+- **Purpose**: Tests priority conflicts across different rule types
+- **Conflicts**: 
+  - Custom rule group vs AWS managed rule (priority 100)
+  - AWS managed rule vs inline rule (priority 300)
+- **Expected Result**: ❌ VALIDATION_ERROR
+
+### Test Case 4: Multiple Inline Rule Conflicts
+**Module**: `waf_inline_rule_conflicts`
+- **Purpose**: Tests multiple inline rule priority conflicts
+- **Conflicts**: Three inline rules with priority 500
+- **Expected Result**: ❌ VALIDATION_ERROR
+
+### Test Case 5: Edge Case Priority Conflicts
+**Module**: `waf_edge_case_conflicts`
+- **Purpose**: Tests edge cases and boundary conditions
+- **Conflicts**: 
+  - Two rule groups with minimum priority (1)
+  - Rule group vs AWS managed rule (priority 1)
+- **Expected Result**: ❌ VALIDATION_ERROR
+
+### Test Case 6: Valid Priority Configuration
+**Module**: `waf_valid_priorities`
+- **Purpose**: Control test with valid priority configuration
+- **Conflicts**: None (all priorities unique)
+- **Expected Result**: ✅ SUCCESS
+
+### Test Case 7: Sequential Priority Conflicts
+**Module**: `waf_sequential_conflicts`
+- **Purpose**: Tests conflicts in sequential priority assignments
+- **Conflicts**: 
+  - Rule group vs AWS managed rule (priority 20)
+  - AWS managed rule vs inline rule (priority 40)
+- **Expected Result**: ❌ VALIDATION_ERROR
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Terraform >= 1.3.0
+- AWS CLI configured (for actual deployment)
+- Understanding that this example is designed to fail validation
+
+### Running the Tests
+
+1. **Navigate to the example directory**
+   ```bash
+   cd waf-module-v1/examples/invalid_priority
+   ```
+
+2. **Run the validation script**
+   ```bash
+   # Linux/macOS/WSL
+   bash test_validation.sh
+   
+   # Windows PowerShell
+   powershell -ExecutionPolicy Bypass -File test_validation.ps1
+   ```
+
+3. **Manual testing steps**
+   ```bash
+   # Initialize Terraform
+   terraform init
+   
+   # Validate configuration (should detect conflicts)
+   terraform validate
+   
+   # Plan deployment (should fail due to conflicts)
+   terraform plan
+   
+   # Test individual valid module (should work)
+   terraform plan -target=module.waf_valid_priorities
+   ```
+
+## 📊 Expected Results
+
+### Validation Failures (Expected)
+The following modules should **fail** validation due to priority conflicts:
+
+| Module | Conflict Type | Priority Conflicts |
+|--------|---------------|-------------------|
+| `waf_duplicate_rule_groups` | Rule Groups | 2 groups with priority 100 |
+| `waf_duplicate_aws_managed` | AWS Managed | 2 rules with priority 200 |
+| `waf_mixed_priority_conflicts` | Mixed Types | Multiple conflicts across types |
+| `waf_inline_rule_conflicts` | Inline Rules | 3 rules with priority 500 |
+| `waf_edge_case_conflicts` | Edge Cases | Multiple conflicts at priority 1 |
+| `waf_sequential_conflicts` | Sequential | Conflicts in sequence (20, 40) |
+
+### Validation Success (Expected)
+The following module should **pass** validation:
+
+| Module | Purpose | Result |
+|--------|---------|--------|
+| `waf_valid_priorities` | Control Test | ✅ All priorities unique |
+
+## 🔍 Priority Validation Rules
+
+The WAF module enforces these priority validation rules:
+
+1. **Uniqueness**: All rule priorities must be unique across:
+   - Custom rule groups (`rule_group_arn_list`)
+   - AWS managed rules (`aws_managed_rule_groups`)
+   - Inline rules (`custom_inline_rules`)
+
+2. **Range**: Priority values must be positive integers
+
+3. **Evaluation Order**: Lower priority values are evaluated first
+
+4. **Conflict Detection**: The module includes built-in validation logic to detect conflicts
+
+## 🧪 Testing Methodology
+
+### Validation Approach
+- **Intentional Conflicts**: Each test case includes deliberate priority conflicts
+- **Comprehensive Coverage**: Tests all rule types and conflict scenarios
+- **Control Test**: Includes one valid configuration to ensure validation logic works correctly
+- **Automated Testing**: Validation scripts automate the testing process
+
+### Test Execution Flow
+1. **Structure Validation**: Verify all test cases are present
+2. **Conflict Detection**: Analyze configuration for expected conflicts
+3. **Terraform Init**: Initialize the configuration
+4. **Validation Testing**: Run `terraform validate` (should fail for most cases)
+5. **Plan Testing**: Run `terraform plan` (should fail due to conflicts)
+6. **Individual Testing**: Test the valid configuration separately
+7. **Results Analysis**: Verify expected outcomes
+
+## 📈 Validation Script Features
+
+### Bash Script (`test_validation.sh`)
+- Comprehensive test coverage
+- Detailed conflict analysis
+- Automated result verification
+- Clear success/failure reporting
+
+### PowerShell Script (`test_validation.ps1`)
+- Windows-compatible testing
+- Colored output for clarity
+- Same functionality as bash script
+- Cross-platform consistency
+
+### Key Features
+- **Environment Checks**: Verify Terraform installation
+- **Configuration Analysis**: Count modules, conflicts, and outputs
+- **Automated Testing**: Run all validation steps automatically
+- **Result Reporting**: Clear summary of test results
+- **Documentation Validation**: Verify configuration is properly documented
+
+## 🔧 Configuration Details
+
+### Variables
 ```hcl
-rule_group_arn_list = [
-  {
-    arn      = "arn:aws:wafv2:us-east-1:123456789012:regional/rulegroup/sample-group-1/abc123"
-    name     = "sample-group-1"
-    priority = 100  # First rule group with priority 100
-  },
-  {
-    arn      = "arn:aws:wafv2:us-east-1:123456789012:regional/rulegroup/sample-group-2/def456"
-    name     = "sample-group-2"
-    priority = 100  # Duplicate priority - should cause validation error
-  }
-]
-```
+variable "aws_region" {
+  description = "AWS region for deployment"
+  default     = "us-east-1"
+}
 
-**Expected Error:**
-```
-Duplicate priorities detected across WAF rules. All priorities must be unique. Found priorities: 100, 100
-```
+variable "name" {
+  description = "Base name for WAF resources"
+  default     = "priority-validation-test"
+}
 
-### Scenario 2: AWS Managed Rules Priority Conflicts
-```hcl
-aws_managed_rule_groups = [
-  {
-    name            = "AWSManagedRulesCommonRuleSet"
-    vendor_name     = "AWS"
-    priority        = 200
-    override_action = "none"
-  },
-  {
-    name            = "AWSManagedRulesSQLiRuleSet"
-    vendor_name     = "AWS"
-    priority        = 200  # Duplicate priority - should cause validation error
-    override_action = "none"
-  }
-]
-```
-
-**Expected Error:**
-```
-Duplicate priorities detected across WAF rules. All priorities must be unique. Found priorities: 200, 200
-```
-
-## How Priority Validation Works
-
-### 1. Priority Collection
-The module collects priorities from all rule sources:
-```hcl
-locals {
-  inline_priorities      = [for r in var.custom_inline_rules : r.priority]
-  rulegroup_priorities   = [for i, r in var.rule_group_arn_list : coalesce(r.priority, 100 + i)]
-  aws_managed_priorities = [for r in var.aws_managed_rule_groups : r.priority]
-  all_waf_priorities     = concat(local.inline_priorities, local.rulegroup_priorities, local.aws_managed_priorities)
+variable "scope" {
+  description = "Scope of the WAF (REGIONAL or CLOUDFRONT)"
+  default     = "REGIONAL"
 }
 ```
 
-### 2. Duplicate Detection
+### Tags
+All resources are tagged for easy identification:
 ```hcl
-locals {
-  unique_priorities      = distinct(local.all_waf_priorities)
-  has_duplicate_priorities = length(local.all_waf_priorities) != length(local.unique_priorities)
+tags = {
+  Environment = "test"
+  Purpose     = "Priority Validation Testing"
+  Example     = "invalid-priority"
+  TestType    = "validation-failure-expected"
 }
 ```
 
-### 3. Validation Check
-```hcl
-resource "null_resource" "priority_validation" {
-  count = var.validate_priorities ? 1 : 0
-  
-  lifecycle {
-    precondition {
-      condition     = !local.has_duplicate_priorities
-      error_message = "Duplicate priorities detected across WAF rules. All priorities must be unique. Found priorities: ${join(", ", local.all_waf_priorities)}"
-    }
-  }
-}
-```
+## 📤 Outputs
 
-## Testing the Example
+The example provides comprehensive outputs for analysis:
 
-### 1. Initialize Terraform
-```bash
-terraform init
-```
+- **Individual WAF ARNs**: ARN for each test case WAF
+- **Validation Summary**: Detailed summary of all test cases
+- **Conflict Analysis**: List of expected priority conflicts
+- **Testing Metadata**: Information about the testing approach
 
-### 2. Validate Configuration (Syntax Check)
-```bash
-terraform validate
-# Should pass - syntax is correct
-```
+## ⚠️ Important Notes
 
-### 3. Plan Deployment (Priority Validation)
-```bash
-terraform plan
-# Should fail with priority validation errors
-```
+### This Example is Designed to Fail
+- **Intentional Conflicts**: Priority conflicts are deliberate for testing
+- **Expected Behavior**: Most modules should fail validation
+- **Control Test**: Only `waf_valid_priorities` should deploy successfully
+- **Learning Tool**: Use this to understand priority validation behavior
 
-### Expected Output
-```
-Error: Resource precondition failed
+### Production Usage
+- **Don't Deploy**: This configuration should not be deployed to production
+- **Learning Purpose**: Use for understanding priority validation logic
+- **Reference**: Use the `waf_valid_priorities` module as a reference for correct configuration
 
-Duplicate priorities detected across WAF rules. All priorities must be unique. Found priorities: 100, 100
+## 🛠️ Troubleshooting
 
-Error: Resource precondition failed
+### Common Issues
 
-Duplicate priorities detected across WAF rules. All priorities must be unique. Found priorities: 200, 200
-```
+1. **All Tests Pass Unexpectedly**
+   - Check if priority validation logic is working correctly
+   - Verify conflicts are properly configured
+   - Review module validation implementation
 
-## Fixing Priority Conflicts
+2. **Terraform Init Fails**
+   - Ensure you're in the correct directory
+   - Check module paths are correct
+   - Verify Terraform version compatibility
 
-To resolve priority conflicts, ensure each rule has a unique priority:
-
-### ✅ Correct Configuration
-```hcl
-rule_group_arn_list = [
-  {
-    arn      = "arn:aws:wafv2:us-east-1:123456789012:regional/rulegroup/sample-group-1/abc123"
-    name     = "sample-group-1"
-    priority = 100  # Unique priority
-  },
-  {
-    arn      = "arn:aws:wafv2:us-east-1:123456789012:regional/rulegroup/sample-group-2/def456"
-    name     = "sample-group-2"
-    priority = 101  # Different priority
-  }
-]
-
-aws_managed_rule_groups = [
-  {
-    name            = "AWSManagedRulesCommonRuleSet"
-    vendor_name     = "AWS"
-    priority        = 200  # Unique priority
-    override_action = "none"
-  },
-  {
-    name            = "AWSManagedRulesSQLiRuleSet"
-    vendor_name     = "AWS"
-    priority        = 201  # Different priority
-    override_action = "none"
-  }
-]
-```
-
-## Priority Best Practices
-
-### 1. Priority Ranges
-- **Custom Inline Rules**: 1-99
-- **Rule Groups**: 100-199
-- **AWS Managed Rules**: 200-299
-- **Rate Limiting**: 300-399
-
-### 2. Priority Spacing
-Leave gaps between priorities for future rules:
-```hcl
-priority = 100  # First rule
-priority = 110  # Second rule (gap of 10)
-priority = 120  # Third rule
-```
-
-### 3. Documentation
-Document your priority scheme:
-```hcl
-# Priority Scheme:
-# 1-99:    Custom inline rules
-# 100-199: Custom rule groups
-# 200-299: AWS managed rules
-# 300-399: Rate limiting rules
-```
-
-## Validation Control
-
-### Enable/Disable Validation
-```hcl
-module "waf" {
-  source = "../../modules/waf"
-  
-  validate_priorities = true  # Enable validation (default)
-  # validate_priorities = false # Disable validation (not recommended)
-  
-  # ... other configuration
-}
-```
-
-### When to Disable Validation
-- **Testing**: Temporary disable for testing scenarios
-- **Migration**: During complex migrations with temporary conflicts
-- **Advanced Use Cases**: When you need specific priority arrangements
-
-**⚠️ Warning**: Disabling validation can lead to deployment failures at the AWS level.
-
-## Error Resolution
-
-### Common Priority Conflicts
-1. **Duplicate Explicit Priorities**: Two rules with same priority number
-2. **Default Priority Conflicts**: Auto-assigned priorities conflicting with explicit ones
-3. **Cross-Type Conflicts**: Rule groups conflicting with AWS managed rules
+3. **Valid Priorities Module Fails**
+   - Check for any unintended priority conflicts
+   - Verify all priorities are unique
+   - Review module configuration
 
 ### Debugging Steps
-1. **List All Priorities**: Check the error message for all priority values
-2. **Identify Sources**: Determine which rules have conflicting priorities
-3. **Reassign Priorities**: Update priorities to be unique
-4. **Test Again**: Run `terraform plan` to verify fixes
+1. Run validation scripts for detailed analysis
+2. Check Terraform error messages for specific conflicts
+3. Review individual module configurations
+4. Verify priority assignments are as expected
 
-This example serves as both a demonstration of the validation system and a testing tool for ensuring your WAF configurations have proper priority management.
+## 📚 Learning Outcomes
+
+After running this example, you should understand:
+
+- **Priority Validation**: How WAF priority validation works
+- **Conflict Detection**: What causes priority conflicts
+- **Error Handling**: How Terraform reports validation errors
+- **Best Practices**: Proper priority assignment patterns
+- **Testing Methodology**: How to test validation logic
+
+## 🔗 Related Examples
+
+- **Basic WAF**: Simple WAF configuration without conflicts
+- **Enterprise WAF**: Complex WAF with proper priority management
+- **Custom Rules**: Examples of custom rule configurations
+
+This comprehensive priority validation example ensures robust testing of the WAF module's validation logic and helps developers understand proper priority management in AWS WAF configurations.
