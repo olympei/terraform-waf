@@ -1,3 +1,16 @@
+# Enterprise Zero-Trust WAF with Database Client Support
+# 
+# This example demonstrates a zero-trust WAF configuration that:
+# 1. Blocks all traffic by default (zero-trust principle)
+# 2. Explicitly allows legitimate HTTP/HTTPS traffic
+# 3. Supports database client access via 'dbclient' header
+#
+# Database Client Usage Examples:
+# - curl -H "x-client-type: dbclient" https://api.example.com/data
+# - curl -H "user-agent: MyApp/1.0 dbclient" https://api.example.com/query
+# - curl -H "x-application: dbclient-v2.1" https://api.example.com/connect
+# - curl -H "authorization: Bearer token-dbclient-xyz" https://api.example.com/auth
+
 provider "aws" {
   region = "us-east-1"
 }
@@ -107,6 +120,23 @@ variable "enable_kms_encryption" {
   type        = bool
   default     = true
 }
+
+variable "enable_dbclient_access" {
+  description = "Enable access for database clients with 'dbclient' header"
+  type        = bool
+  default     = true
+}
+
+variable "dbclient_headers" {
+  description = "List of headers to check for 'dbclient' value (case-insensitive)"
+  type        = list(string)
+  default     = ["x-client-type", "user-agent", "x-application", "authorization"]
+  
+  validation {
+    condition     = length(var.dbclient_headers) > 0
+    error_message = "At least one header must be specified for dbclient detection."
+  }
+}
 variable "tags" {
   description = "Tags for enterprise zero-trust resources"
   type        = map(string)
@@ -133,7 +163,7 @@ module "zero_trust_allow_rules" {
   capacity        = 400
   metric_name     = "ZeroTrustAllowRules"
 
-  custom_rules = [
+  custom_rules = concat([
     # Layer 1: Geographic Allow List (Highest Priority)
     {
       name        = "AllowTrustedCountries"
@@ -526,7 +556,47 @@ module "zero_trust_allow_rules" {
         }
       }
     }
-  ]
+  ], var.enable_dbclient_access ? [
+    # Conditional Layer: Allow HTTP Traffic with dbclient Header
+    {
+      name        = "AllowDBClientTraffic"
+      priority    = 19
+      action      = "allow"
+      metric_name = "allow_dbclient_traffic"
+      statement_config = {
+        and_statement = {
+          statements = [
+            {
+              or_statement = {
+                statements = [
+                  for header in var.dbclient_headers : {
+                    byte_match_statement = {
+                      search_string         = "dbclient"
+                      positional_constraint = "CONTAINS"
+                      field_to_match = {
+                        single_header = {
+                          name = header
+                        }
+                      }
+                      text_transformation = {
+                        priority = 0
+                        type     = "LOWERCASE"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              geo_match_statement = {
+                country_codes = var.trusted_countries
+              }
+            }
+          ]
+        }
+      }
+    }
+  ] : [])
 
 
   tags = merge(var.tags, {
@@ -672,6 +742,16 @@ output "allow_rules_arn" {
   value       = module.zero_trust_allow_rules.waf_rule_group_arn
 }
 
+output "dbclient_configuration" {
+  description = "Database client access configuration"
+  value = {
+    enabled = var.enable_dbclient_access
+    headers = var.enable_dbclient_access ? var.dbclient_headers : []
+    rule_priority = var.enable_dbclient_access ? 19 : null
+    description = var.enable_dbclient_access ? "Allows HTTP traffic with 'dbclient' in specified headers from trusted countries" : "Database client access is disabled"
+  }
+}
+
 output "zero_trust_configuration" {
   description = "Complete zero-trust WAF configuration summary"
   value = {
@@ -685,16 +765,16 @@ output "zero_trust_configuration" {
     protection_layers = {
       layer_1_allow_rules = {
         priority = 100
-        rules    = 7
+        rules    = var.enable_dbclient_access ? 8 : 7
         purpose  = "Explicit allow for legitimate HTTP/HTTPS traffic"
-        coverage = [
+        coverage = concat([
           "Trusted geographic regions",
           "Standard HTTP methods (GET, POST, PUT, PATCH, OPTIONS)",
           "Legitimate browser User-Agents (Mozilla, Chrome, Safari, Edge, Firefox)",
           "Static resources (CSS, JS, images)",
           "CORS preflight requests",
           "REST API methods with proper content-type"
-        ]
+        ], var.enable_dbclient_access ? ["Database client traffic (headers containing 'dbclient')"] : [])
       }
 
       layer_2_aws_managed = {
@@ -726,14 +806,16 @@ output "zero_trust_configuration" {
       }
     }
 
-    allowed_traffic = {
+    allowed_traffic = merge({
       countries      = var.trusted_countries
       http_methods   = ["GET", "POST", "PUT", "PATCH", "OPTIONS"]
       user_agents    = ["Mozilla", "Chrome", "Safari", "Edge", "Firefox"]
       static_files   = [".css", ".js", ".png", ".jpg", ".gif", ".ico"]
       special_paths  = ["/health", "/robots.txt", "/sitemap.xml", "/favicon.ico"]
       content_types  = ["application/json for REST APIs"]
-    }
+    }, var.enable_dbclient_access ? {
+      db_clients = ["Headers containing 'dbclient' in: ${join(", ", var.dbclient_headers)}"]
+    } : {})
 
     warnings = [
       "DEFAULT ACTION IS BLOCK - Test thoroughly!",

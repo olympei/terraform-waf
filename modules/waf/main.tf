@@ -7,10 +7,10 @@ resource "aws_kms_key" "this" {
 
 resource "aws_cloudwatch_log_group" "this" {
   count             = var.create_log_group ? 1 : 0
-  name              = var.log_group_name != null ? var.log_group_name : "/aws/wafv2/${var.name}"
+  name              = local.default_log_group_name
   retention_in_days = var.log_group_retention_in_days
   kms_key_id        = var.kms_key_id != null ? var.kms_key_id : aws_kms_key.this[0].arn
-  tags              = var.tags
+  tags              = local.common_tags
 }
 
 # Local: Combined priorities for validation
@@ -329,6 +329,154 @@ resource "aws_wafv2_web_acl" "this" {
               }
             }
           }
+          
+          # AND Statement Support for Complex Rules
+          dynamic "and_statement" {
+            for_each = rule.value.statement_config != null && rule.value.statement_config.and_statement != null ? [rule.value.statement_config.and_statement] : []
+            content {
+              dynamic "statement" {
+                for_each = and_statement.value.statements != null ? and_statement.value.statements : []
+                content {
+                  # OR Statement within AND
+                  dynamic "or_statement" {
+                    for_each = statement.value.or_statement != null ? [statement.value.or_statement] : []
+                    content {
+                      dynamic "statement" {
+                        for_each = or_statement.value.statements != null ? or_statement.value.statements : []
+                        content {
+                          # Byte Match Statement within OR
+                          dynamic "byte_match_statement" {
+                            for_each = statement.value.byte_match_statement != null ? [statement.value.byte_match_statement] : []
+                            content {
+                              search_string = byte_match_statement.value.search_string
+                              positional_constraint = byte_match_statement.value.positional_constraint
+                              field_to_match {
+                                dynamic "single_header" {
+                                  for_each = byte_match_statement.value.field_to_match.single_header != null ? [byte_match_statement.value.field_to_match.single_header] : []
+                                  content {
+                                    name = single_header.value.name
+                                  }
+                                }
+                                dynamic "body" {
+                                  for_each = byte_match_statement.value.field_to_match.body != null ? [1] : []
+                                  content {}
+                                }
+                                dynamic "uri_path" {
+                                  for_each = byte_match_statement.value.field_to_match.uri_path != null ? [1] : []
+                                  content {}
+                                }
+                                dynamic "method" {
+                                  for_each = byte_match_statement.value.field_to_match.method != null ? [1] : []
+                                  content {}
+                                }
+                              }
+                              text_transformation {
+                                priority = byte_match_statement.value.text_transformation.priority
+                                type     = byte_match_statement.value.text_transformation.type
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  
+                  # Geo Match Statement within AND
+                  dynamic "geo_match_statement" {
+                    for_each = statement.value.geo_match_statement != null ? [statement.value.geo_match_statement] : []
+                    content {
+                      country_codes = geo_match_statement.value.country_codes
+                    }
+                  }
+                  
+                  # Byte Match Statement within AND
+                  dynamic "byte_match_statement" {
+                    for_each = statement.value.byte_match_statement != null ? [statement.value.byte_match_statement] : []
+                    content {
+                      search_string = byte_match_statement.value.search_string
+                      positional_constraint = byte_match_statement.value.positional_constraint
+                      field_to_match {
+                        dynamic "single_header" {
+                          for_each = byte_match_statement.value.field_to_match.single_header != null ? [byte_match_statement.value.field_to_match.single_header] : []
+                          content {
+                            name = single_header.value.name
+                          }
+                        }
+                        dynamic "body" {
+                          for_each = byte_match_statement.value.field_to_match.body != null ? [1] : []
+                          content {}
+                        }
+                        dynamic "uri_path" {
+                          for_each = byte_match_statement.value.field_to_match.uri_path != null ? [1] : []
+                          content {}
+                        }
+                        dynamic "method" {
+                          for_each = byte_match_statement.value.field_to_match.method != null ? [1] : []
+                          content {}
+                        }
+                      }
+                      text_transformation {
+                        priority = byte_match_statement.value.text_transformation.priority
+                        type     = byte_match_statement.value.text_transformation.type
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          
+          # OR Statement Support for Complex Rules
+          dynamic "or_statement" {
+            for_each = rule.value.statement_config != null && rule.value.statement_config.or_statement != null ? [rule.value.statement_config.or_statement] : []
+            content {
+              dynamic "statement" {
+                for_each = or_statement.value.statements != null ? or_statement.value.statements : []
+                content {
+                  # Byte Match Statement within OR
+                  dynamic "byte_match_statement" {
+                    for_each = statement.value.byte_match_statement != null ? [statement.value.byte_match_statement] : []
+                    content {
+                      search_string = byte_match_statement.value.search_string
+                      positional_constraint = byte_match_statement.value.positional_constraint
+                      field_to_match {
+                        dynamic "single_header" {
+                          for_each = byte_match_statement.value.field_to_match.single_header != null ? [byte_match_statement.value.field_to_match.single_header] : []
+                          content {
+                            name = single_header.value.name
+                          }
+                        }
+                        dynamic "body" {
+                          for_each = byte_match_statement.value.field_to_match.body != null ? [1] : []
+                          content {}
+                        }
+                        dynamic "uri_path" {
+                          for_each = byte_match_statement.value.field_to_match.uri_path != null ? [1] : []
+                          content {}
+                        }
+                        dynamic "method" {
+                          for_each = byte_match_statement.value.field_to_match.method != null ? [1] : []
+                          content {}
+                        }
+                      }
+                      text_transformation {
+                        priority = byte_match_statement.value.text_transformation.priority
+                        type     = byte_match_statement.value.text_transformation.type
+                      }
+                    }
+                  }
+                  
+                  # Geo Match Statement within OR
+                  dynamic "geo_match_statement" {
+                    for_each = statement.value.geo_match_statement != null ? [statement.value.geo_match_statement] : []
+                    content {
+                      country_codes = geo_match_statement.value.country_codes
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
       
@@ -386,9 +534,84 @@ resource "aws_wafv2_web_acl_logging_configuration" "this" {
 
   resource_arn = aws_wafv2_web_acl.this.arn
 
-  log_destination_configs = var.create_log_group ? [aws_cloudwatch_log_group.this[0].arn] : [var.existing_log_group_arn]
+  log_destination_configs = [local.log_group_arn]
 
-  depends_on = [aws_wafv2_web_acl.this]
+  depends_on = [aws_wafv2_web_acl.this, aws_cloudwatch_log_group.this]
+
+  # Enhanced lifecycle rules to prevent issues with invalid ARNs
+  lifecycle {
+    precondition {
+      condition = local.is_valid_log_group_arn
+      error_message = <<-EOT
+        The existing_log_group_arn must be a valid CloudWatch Log Group ARN with proper WAF naming.
+        
+        Expected format: arn:aws:logs:region:account-id:log-group:aws-waf-logs-*
+        Current value: ${var.existing_log_group_arn}
+        
+        ⚠️  CRITICAL: Log group name MUST start with 'aws-waf-logs-' prefix!
+        
+        Examples of valid ARNs:
+        - arn:aws:logs:us-east-1:123456789012:log-group:aws-waf-logs-my-waf
+        - arn:aws:logs:eu-west-1:123456789012:log-group:aws-waf-logs-example-firehose
+        - arn:aws:logs:ap-southeast-1:123456789012:log-group:aws-waf-logs-example-log-group
+        
+        Common issues:
+        - Missing 'aws-waf-logs-' prefix in log group name (REQUIRED by AWS)
+        - Missing 'log-group' prefix in ARN
+        - Wrong service (should be 'logs', not 'cloudwatch')
+        - Missing or incorrect region/account ID
+        - Log group name contains invalid characters
+        
+        Fix: Use log group name like 'aws-waf-logs-${var.name}' instead of '${local.log_group_name_from_arn}'
+      EOT
+    }
+    
+    precondition {
+      condition = local.is_correct_region
+      error_message = <<-EOT
+        The region in existing_log_group_arn (${local.arn_region}) doesn't match the current deployment region (${local.current_region}).
+        
+        Current ARN: ${var.existing_log_group_arn}
+        Expected region: ${local.current_region}
+        
+        Please update the ARN to use the correct region or deploy in the region specified in the ARN.
+      EOT
+    }
+    
+    precondition {
+      condition = local.is_correct_account
+      error_message = <<-EOT
+        The account ID in existing_log_group_arn (${local.arn_account_id}) doesn't match the current AWS account (${local.current_account_id}).
+        
+        Current ARN: ${var.existing_log_group_arn}
+        Expected account ID: ${local.current_account_id}
+        
+        Please update the ARN to use the correct account ID or ensure you're deploying to the correct AWS account.
+      EOT
+    }
+    
+    precondition {
+      condition = local.log_group_name_valid
+      error_message = <<-EOT
+        ⚠️  CRITICAL AWS REQUIREMENT: Log group name must start with 'aws-waf-logs-' prefix!
+        
+        Current log group name: ${local.log_group_name_from_arn}
+        Required prefix: aws-waf-logs-
+        
+        AWS WAF logging requires log destinations to be prefixed with 'aws-waf-logs-':
+        - CloudWatch Log Group: aws-waf-logs-example-log-group
+        - Kinesis Data Firehose: aws-waf-logs-example-firehose  
+        - S3 Bucket: aws-waf-logs-example-bucket
+        
+        Valid examples:
+        - aws-waf-logs-${var.name}
+        - aws-waf-logs-production-waf
+        - aws-waf-logs-my-application
+        
+        Fix your ARN to: arn:aws:logs:${local.current_region}:${local.current_account_id}:log-group:aws-waf-logs-${var.name}
+      EOT
+    }
+  }
 }
 
 

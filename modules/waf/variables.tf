@@ -52,8 +52,14 @@ variable "log_group_name" {
 }
 
 variable "existing_log_group_arn" {
-  type    = string
-  default = null
+  type        = string
+  default     = null
+  description = "ARN of an existing CloudWatch Log Group to use for WAF logging. Must be in the format: arn:aws:logs:region:account-id:log-group:log-group-name"
+  
+  validation {
+    condition = var.existing_log_group_arn == null || can(regex("^arn:aws:logs:[a-z0-9-]+:[0-9]{12}:log-group:", var.existing_log_group_arn))
+    error_message = "The existing_log_group_arn must be a valid CloudWatch Log Group ARN in the format: arn:aws:logs:region:account-id:log-group:log-group-name"
+  }
 }
 
 variable "log_group_retention_in_days" {
@@ -179,6 +185,78 @@ variable "custom_inline_rules" {
           priority = number
           type     = string
         })
+      }))
+      
+      # AND Statement for Complex Logic
+      and_statement = optional(object({
+        statements = list(object({
+          # OR Statement within AND
+          or_statement = optional(object({
+            statements = list(object({
+              byte_match_statement = optional(object({
+                search_string = string
+                positional_constraint = string
+                field_to_match = object({
+                  single_header = optional(object({ name = string }))
+                  body          = optional(object({}))
+                  uri_path      = optional(object({}))
+                  method        = optional(object({}))
+                })
+                text_transformation = object({
+                  priority = number
+                  type     = string
+                })
+              }))
+            }))
+          }))
+          
+          # Geo Match Statement within AND
+          geo_match_statement = optional(object({
+            country_codes = list(string)
+          }))
+          
+          # Byte Match Statement within AND
+          byte_match_statement = optional(object({
+            search_string = string
+            positional_constraint = string
+            field_to_match = object({
+              single_header = optional(object({ name = string }))
+              body          = optional(object({}))
+              uri_path      = optional(object({}))
+              method        = optional(object({}))
+            })
+            text_transformation = object({
+              priority = number
+              type     = string
+            })
+          }))
+        }))
+      }))
+      
+      # OR Statement for Complex Logic
+      or_statement = optional(object({
+        statements = list(object({
+          # Byte Match Statement within OR
+          byte_match_statement = optional(object({
+            search_string = string
+            positional_constraint = string
+            field_to_match = object({
+              single_header = optional(object({ name = string }))
+              body          = optional(object({}))
+              uri_path      = optional(object({}))
+              method        = optional(object({}))
+            })
+            text_transformation = object({
+              priority = number
+              type     = string
+            })
+          }))
+          
+          # Geo Match Statement within OR
+          geo_match_statement = optional(object({
+            country_codes = list(string)
+          }))
+        }))
       }))
     }))
   }))
