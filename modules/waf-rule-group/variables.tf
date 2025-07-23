@@ -149,6 +149,73 @@ variable "custom_rules" {
           type     = string
         })
       }))
+      
+      # AND Statement (for combining multiple conditions with logical AND)
+      and_statement = optional(object({
+        statements = list(object({
+          geo_match_statement = optional(object({
+            country_codes = list(string)
+          }))
+          byte_match_statement = optional(object({
+            search_string = string
+            field_to_match = object({
+              body                = optional(object({}))
+              uri_path           = optional(object({}))
+              query_string       = optional(object({}))
+              all_query_arguments = optional(object({}))
+              single_header      = optional(object({ name = string }))
+              method             = optional(object({}))
+            })
+            positional_constraint = string
+            text_transformation = object({
+              priority = number
+              type     = string
+            })
+          }))
+          or_statement = optional(object({
+            statements = list(object({
+              byte_match_statement = optional(object({
+                search_string = string
+                field_to_match = object({
+                  body                = optional(object({}))
+                  uri_path           = optional(object({}))
+                  query_string       = optional(object({}))
+                  all_query_arguments = optional(object({}))
+                  single_header      = optional(object({ name = string }))
+                  method             = optional(object({}))
+                })
+                positional_constraint = string
+                text_transformation = object({
+                  priority = number
+                  type     = string
+                })
+              }))
+            }))
+          }))
+        }))
+      }))
+      
+      # OR Statement (for alternative conditions with logical OR)
+      or_statement = optional(object({
+        statements = list(object({
+          byte_match_statement = optional(object({
+            search_string = string
+            field_to_match = object({
+              body                = optional(object({}))
+              uri_path           = optional(object({}))
+              query_string       = optional(object({}))
+              all_query_arguments = optional(object({}))
+              single_header      = optional(object({ name = string }))
+              method             = optional(object({}))
+            })
+            positional_constraint = string
+            text_transformation = object({
+              priority = number
+              type     = string
+            })
+          }))
+        }))
+      }))
     }))
   }))
   default = []
