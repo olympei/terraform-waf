@@ -95,7 +95,21 @@ resource "aws_wafv2_web_acl" "this" {
       
       # Handle both legacy string statements and new object-based statements
       dynamic "statement" {
-        for_each = rule.value.statement != null ? [1] : (rule.value.statement_config != null ? [1] : [])
+        for_each = (
+          rule.value.statement != null ||
+          (rule.value.statement_config != null && (
+            rule.value.statement_config.sqli_match_statement != null ||
+            rule.value.statement_config.xss_match_statement != null ||
+            rule.value.statement_config.ip_set_reference_statement != null ||
+            rule.value.statement_config.regex_pattern_set_reference_statement != null ||
+            rule.value.statement_config.byte_match_statement != null ||
+            rule.value.statement_config.rate_based_statement != null ||
+            rule.value.statement_config.geo_match_statement != null ||
+            rule.value.statement_config.size_constraint_statement != null ||
+            rule.value.statement_config.and_statement != null ||
+            rule.value.statement_config.or_statement != null
+          ))
+        ) ? [1] : []
         content {
           # Legacy string statement (deprecated but supported)
           dynamic "sqli_match_statement" {
