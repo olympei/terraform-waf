@@ -26,6 +26,11 @@ resource "aws_wafv2_rule_group" "this" {
   scope    = var.scope
   capacity = var.capacity
 
+  lifecycle {
+    create_before_destroy = true
+    prevent_destroy       = false
+  }
+
   # Type-based rules (generated from type field)
   dynamic "rule" {
     for_each = local.type_based_rules
@@ -672,6 +677,11 @@ resource "aws_wafv2_rule_group" "templated" {
   capacity    = 50
   description = "WAF Rule Group using template rendering"
   tags        = var.tags
+
+  lifecycle {
+    create_before_destroy = true
+    prevent_destroy       = false
+  }
 
   visibility_config {
     cloudwatch_metrics_enabled = true
