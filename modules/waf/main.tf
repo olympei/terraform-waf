@@ -99,7 +99,7 @@ resource "aws_wafv2_web_acl" "this" {
         content {
           # Legacy string statement (deprecated but supported)
           dynamic "sqli_match_statement" {
-            for_each = rule.value.statement != null && contains(rule.value.statement, "sqli_match_statement") ? [1] : []
+            for_each = try(rule.value.statement != null && contains(rule.value.statement, "sqli_match_statement"), false) ? [1] : []
             content {
               # This is a simplified fallback for legacy string statements
               field_to_match {

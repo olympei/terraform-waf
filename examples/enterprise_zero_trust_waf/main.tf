@@ -555,7 +555,7 @@ module "enterprise_zero_trust_waf" {
     {
       arn      = module.zero_trust_allow_rules.waf_rule_group_arn
       name     = "zero-trust-allow-rules"
-      priority = 100
+      priority = 50
     }
   ]
 
@@ -564,7 +564,7 @@ module "enterprise_zero_trust_waf" {
     {
       name            = "AWSManagedRulesCommonRuleSet"
       vendor_name     = "AWS"
-      priority        = 300
+      priority        = 200
       override_action = "count" # Monitor but don't block
     }
   ]
@@ -574,7 +574,7 @@ module "enterprise_zero_trust_waf" {
     # Allow health checks
     {
       name        = "AllowHealthChecks"
-      priority    = 500
+      priority    = 400
       action      = "allow"
       metric_name = "allow_health_checks"
       statement_config = {
@@ -595,7 +595,7 @@ module "enterprise_zero_trust_waf" {
     # Allow robots.txt and sitemap.xml
     {
       name        = "AllowSEOFiles"
-      priority    = 510
+      priority    = 410
       action      = "allow"
       metric_name = "allow_seo_files"
       statement_config = {
@@ -635,7 +635,7 @@ module "enterprise_zero_trust_waf" {
     # Allow favicon requests
     {
       name        = "AllowFavicon"
-      priority    = 520
+      priority    = 420
       action      = "allow"
       metric_name = "allow_favicon"
       statement_config = {
@@ -684,7 +684,7 @@ output "zero_trust_configuration" {
 
     protection_layers = {
       layer_1_allow_rules = {
-        priority = 100
+        priority = 50
         rules    = 7
         purpose  = "Explicit allow for legitimate HTTP/HTTPS traffic"
         coverage = [
@@ -698,7 +698,7 @@ output "zero_trust_configuration" {
       }
 
       layer_2_aws_managed = {
-        priority = 300
+        priority = 200
         rules    = 1
         purpose  = "Monitor AWS threat intelligence"
         mode     = "count"
@@ -708,7 +708,7 @@ output "zero_trust_configuration" {
       }
 
       layer_3_inline_rules = {
-        priority = 500
+        priority = 400
         rules    = 3
         purpose  = "Critical path-specific controls"
         coverage = [
@@ -727,12 +727,12 @@ output "zero_trust_configuration" {
     }
 
     allowed_traffic = {
-      countries      = var.trusted_countries
-      http_methods   = ["GET", "POST", "PUT", "PATCH", "OPTIONS"]
-      user_agents    = ["Mozilla", "Chrome", "Safari", "Edge", "Firefox"]
-      static_files   = [".css", ".js", ".png", ".jpg", ".gif", ".ico"]
-      special_paths  = ["/health", "/robots.txt", "/sitemap.xml", "/favicon.ico"]
-      content_types  = ["application/json for REST APIs"]
+      countries     = var.trusted_countries
+      http_methods  = ["GET", "POST", "PUT", "PATCH", "OPTIONS"]
+      user_agents   = ["Mozilla", "Chrome", "Safari", "Edge", "Firefox"]
+      static_files  = [".css", ".js", ".png", ".jpg", ".gif", ".ico"]
+      special_paths = ["/health", "/robots.txt", "/sitemap.xml", "/favicon.ico"]
+      content_types = ["application/json for REST APIs"]
     }
 
     warnings = [
