@@ -330,6 +330,170 @@ resource "aws_wafv2_web_acl" "this" {
             }
           }
         }
+
+        # AND Statement (for combining multiple conditions)
+        dynamic "and_statement" {
+          for_each = rule.value.statement_config != null && rule.value.statement_config.and_statement != null ? [rule.value.statement_config.and_statement] : []
+          content {
+            dynamic "statement" {
+              for_each = and_statement.value.statements
+              content {
+                # Nested Geo Match Statement
+                dynamic "geo_match_statement" {
+                  for_each = statement.value.geo_match_statement != null ? [statement.value.geo_match_statement] : []
+                  content {
+                    country_codes = geo_match_statement.value.country_codes
+                  }
+                }
+
+                # Nested Byte Match Statement
+                dynamic "byte_match_statement" {
+                  for_each = statement.value.byte_match_statement != null ? [statement.value.byte_match_statement] : []
+                  content {
+                    search_string = byte_match_statement.value.search_string
+                    positional_constraint = byte_match_statement.value.positional_constraint
+                    field_to_match {
+                      dynamic "body" {
+                        for_each = byte_match_statement.value.field_to_match.body != null ? [1] : []
+                        content {}
+                      }
+                      dynamic "uri_path" {
+                        for_each = byte_match_statement.value.field_to_match.uri_path != null ? [1] : []
+                        content {}
+                      }
+                      dynamic "query_string" {
+                        for_each = byte_match_statement.value.field_to_match.query_string != null ? [1] : []
+                        content {}
+                      }
+                      dynamic "all_query_arguments" {
+                        for_each = byte_match_statement.value.field_to_match.all_query_arguments != null ? [1] : []
+                        content {}
+                      }
+                      dynamic "single_header" {
+                        for_each = byte_match_statement.value.field_to_match.single_header != null ? [byte_match_statement.value.field_to_match.single_header] : []
+                        content {
+                          name = single_header.value.name
+                        }
+                      }
+                      dynamic "method" {
+                        for_each = byte_match_statement.value.field_to_match.method != null ? [1] : []
+                        content {}
+                      }
+                    }
+                    text_transformation {
+                      priority = byte_match_statement.value.text_transformation.priority
+                      type     = byte_match_statement.value.text_transformation.type
+                    }
+                  }
+                }
+
+                # Nested OR Statement
+                dynamic "or_statement" {
+                  for_each = statement.value.or_statement != null ? [statement.value.or_statement] : []
+                  content {
+                    dynamic "statement" {
+                      for_each = or_statement.value.statements
+                      content {
+                        # Nested Byte Match Statement within OR
+                        dynamic "byte_match_statement" {
+                          for_each = statement.value.byte_match_statement != null ? [statement.value.byte_match_statement] : []
+                          content {
+                            search_string = byte_match_statement.value.search_string
+                            positional_constraint = byte_match_statement.value.positional_constraint
+                            field_to_match {
+                              dynamic "body" {
+                                for_each = byte_match_statement.value.field_to_match.body != null ? [1] : []
+                                content {}
+                              }
+                              dynamic "uri_path" {
+                                for_each = byte_match_statement.value.field_to_match.uri_path != null ? [1] : []
+                                content {}
+                              }
+                              dynamic "query_string" {
+                                for_each = byte_match_statement.value.field_to_match.query_string != null ? [1] : []
+                                content {}
+                              }
+                              dynamic "all_query_arguments" {
+                                for_each = byte_match_statement.value.field_to_match.all_query_arguments != null ? [1] : []
+                                content {}
+                              }
+                              dynamic "single_header" {
+                                for_each = byte_match_statement.value.field_to_match.single_header != null ? [byte_match_statement.value.field_to_match.single_header] : []
+                                content {
+                                  name = single_header.value.name
+                                }
+                              }
+                              dynamic "method" {
+                                for_each = byte_match_statement.value.field_to_match.method != null ? [1] : []
+                                content {}
+                              }
+                            }
+                            text_transformation {
+                              priority = byte_match_statement.value.text_transformation.priority
+                              type     = byte_match_statement.value.text_transformation.type
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        # OR Statement (for alternative conditions)
+        dynamic "or_statement" {
+          for_each = rule.value.statement_config != null && rule.value.statement_config.or_statement != null ? [rule.value.statement_config.or_statement] : []
+          content {
+            dynamic "statement" {
+              for_each = or_statement.value.statements
+              content {
+                # Nested Byte Match Statement
+                dynamic "byte_match_statement" {
+                  for_each = statement.value.byte_match_statement != null ? [statement.value.byte_match_statement] : []
+                  content {
+                    search_string = byte_match_statement.value.search_string
+                    positional_constraint = byte_match_statement.value.positional_constraint
+                    field_to_match {
+                      dynamic "body" {
+                        for_each = byte_match_statement.value.field_to_match.body != null ? [1] : []
+                        content {}
+                      }
+                      dynamic "uri_path" {
+                        for_each = byte_match_statement.value.field_to_match.uri_path != null ? [1] : []
+                        content {}
+                      }
+                      dynamic "query_string" {
+                        for_each = byte_match_statement.value.field_to_match.query_string != null ? [1] : []
+                        content {}
+                      }
+                      dynamic "all_query_arguments" {
+                        for_each = byte_match_statement.value.field_to_match.all_query_arguments != null ? [1] : []
+                        content {}
+                      }
+                      dynamic "single_header" {
+                        for_each = byte_match_statement.value.field_to_match.single_header != null ? [byte_match_statement.value.field_to_match.single_header] : []
+                        content {
+                          name = single_header.value.name
+                        }
+                      }
+                      dynamic "method" {
+                        for_each = byte_match_statement.value.field_to_match.method != null ? [1] : []
+                        content {}
+                      }
+                    }
+                    text_transformation {
+                      priority = byte_match_statement.value.text_transformation.priority
+                      type     = byte_match_statement.value.text_transformation.type
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
       
       visibility_config {
