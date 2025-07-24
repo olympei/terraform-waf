@@ -652,12 +652,12 @@ output "rate_limiting_rule_group_arn" {
 
 output "cloudwatch_log_group_arn" {
   description = "ARN of the CloudWatch log group"
-  value       = var.enable_logging ? (var.create_log_group ? module.enterprise_waf.cloudwatch_log_group_arn : var.existing_log_group_arn) : null
+  value       = var.enable_logging ? module.enterprise_waf.cloudwatch_log_group_arn : null
 }
 
 output "cloudwatch_log_group_name" {
   description = "Name of the CloudWatch log group"
-  value       = var.enable_logging ? (var.create_log_group ? module.enterprise_waf.cloudwatch_log_group_name : split(":", var.existing_log_group_arn)[6]) : null
+  value       = var.enable_logging ? module.enterprise_waf.cloudwatch_log_group_name : null
 }
 
 output "logging_configuration" {
@@ -665,33 +665,33 @@ output "logging_configuration" {
   value = {
     enabled           = var.enable_logging
     log_group_created = var.enable_logging && var.create_log_group
-    log_group_arn     = var.enable_logging ? (var.create_log_group ? module.enterprise_waf.cloudwatch_log_group_arn : var.existing_log_group_arn) : null
-    log_group_name    = var.enable_logging ? (var.create_log_group ? module.enterprise_waf.cloudwatch_log_group_name : split(":", var.existing_log_group_arn)[6]) : null
+    log_group_arn     = var.enable_logging ? module.enterprise_waf.cloudwatch_log_group_arn : null
+    log_group_name    = var.enable_logging ? module.enterprise_waf.cloudwatch_log_group_name : null
     retention_days    = var.enable_logging && var.create_log_group ? var.log_group_retention_days : null
-    kms_encrypted     = var.enable_logging && var.create_log_group && var.enable_kms_encryption ? true : false
-    kms_key_id        = var.enable_logging && var.create_log_group && var.enable_kms_encryption ? var.kms_key_id : null
+    kms_encrypted     = var.enable_logging && var.enable_kms_encryption ? true : false
+    kms_key_id        = var.enable_logging && var.enable_kms_encryption ? module.enterprise_waf.kms_key_id : null
 
     enterprise_log_analysis = var.enable_logging ? {
       # Real-time monitoring commands
-      live_logs = "aws logs tail ${var.enable_logging ? (var.create_log_group ? module.enterprise_waf.cloudwatch_log_group_name : split(":", var.existing_log_group_arn)[6]) : "N/A"} --follow"
+      live_logs = "aws logs tail ${var.enable_logging ? module.enterprise_waf.cloudwatch_log_group_name : "N/A"} --follow"
 
       # Security event filtering
-      blocked_requests = "aws logs filter-log-events --log-group-name ${var.enable_logging ? (var.create_log_group ? module.enterprise_waf.cloudwatch_log_group_name : split(":", var.existing_log_group_arn)[6]) : "N/A"} --filter-pattern '{ $.action = \"BLOCK\" }'"
-      allowed_requests = "aws logs filter-log-events --log-group-name ${var.enable_logging ? (var.create_log_group ? module.enterprise_waf.cloudwatch_log_group_name : split(":", var.existing_log_group_arn)[6]) : "N/A"} --filter-pattern '{ $.action = \"ALLOW\" }'"
+      blocked_requests = "aws logs filter-log-events --log-group-name ${var.enable_logging ? module.enterprise_waf.cloudwatch_log_group_name : "N/A"} --filter-pattern '{ $.action = \"BLOCK\" }'"
+      allowed_requests = "aws logs filter-log-events --log-group-name ${var.enable_logging ? module.enterprise_waf.cloudwatch_log_group_name : "N/A"} --filter-pattern '{ $.action = \"ALLOW\" }'"
 
       # Threat-specific analysis
-      geographic_attacks    = "aws logs filter-log-events --log-group-name ${var.enable_logging ? (var.create_log_group ? module.enterprise_waf.cloudwatch_log_group_name : split(":", var.existing_log_group_arn)[6]) : "N/A"} --filter-pattern '{ $.terminatingRuleId = \"BlockHighRiskCountries\" }'"
-      injection_attacks     = "aws logs filter-log-events --log-group-name ${var.enable_logging ? (var.create_log_group ? module.enterprise_waf.cloudwatch_log_group_name : split(":", var.existing_log_group_arn)[6]) : "N/A"} --filter-pattern '{ $.terminatingRuleId = \"BlockAdvancedSQLi\" || $.terminatingRuleId = \"BlockAdvancedXSS\" }'"
-      bot_attacks           = "aws logs filter-log-events --log-group-name ${var.enable_logging ? (var.create_log_group ? module.enterprise_waf.cloudwatch_log_group_name : split(":", var.existing_log_group_arn)[6]) : "N/A"} --filter-pattern '{ $.terminatingRuleId = \"BlockSuspiciousBots\" || $.terminatingRuleId = \"BlockSecurityScanners\" }'"
-      admin_attacks         = "aws logs filter-log-events --log-group-name ${var.enable_logging ? (var.create_log_group ? module.enterprise_waf.cloudwatch_log_group_name : split(":", var.existing_log_group_arn)[6]) : "N/A"} --filter-pattern '{ $.terminatingRuleId = \"ProtectAdminPanel\" || $.terminatingRuleId = \"ProtectDatabaseAdmin\" }'"
-      data_leakage_attempts = "aws logs filter-log-events --log-group-name ${var.enable_logging ? (var.create_log_group ? module.enterprise_waf.cloudwatch_log_group_name : split(":", var.existing_log_group_arn)[6]) : "N/A"} --filter-pattern '{ $.terminatingRuleId = \"ProtectAPIKeys\" || $.terminatingRuleId = \"ProtectSensitiveData\" }'"
+      geographic_attacks    = "aws logs filter-log-events --log-group-name ${var.enable_logging ? module.enterprise_waf.cloudwatch_log_group_name : "N/A"} --filter-pattern '{ $.terminatingRuleId = \"BlockHighRiskCountries\" }'"
+      injection_attacks     = "aws logs filter-log-events --log-group-name ${var.enable_logging ? module.enterprise_waf.cloudwatch_log_group_name : "N/A"} --filter-pattern '{ $.terminatingRuleId = \"BlockAdvancedSQLi\" || $.terminatingRuleId = \"BlockAdvancedXSS\" }'"
+      bot_attacks           = "aws logs filter-log-events --log-group-name ${var.enable_logging ? module.enterprise_waf.cloudwatch_log_group_name : "N/A"} --filter-pattern '{ $.terminatingRuleId = \"BlockSuspiciousBots\" || $.terminatingRuleId = \"BlockSecurityScanners\" }'"
+      admin_attacks         = "aws logs filter-log-events --log-group-name ${var.enable_logging ? module.enterprise_waf.cloudwatch_log_group_name : "N/A"} --filter-pattern '{ $.terminatingRuleId = \"ProtectAdminPanel\" || $.terminatingRuleId = \"ProtectDatabaseAdmin\" }'"
+      data_leakage_attempts = "aws logs filter-log-events --log-group-name ${var.enable_logging ? module.enterprise_waf.cloudwatch_log_group_name : "N/A"} --filter-pattern '{ $.terminatingRuleId = \"ProtectAPIKeys\" || $.terminatingRuleId = \"ProtectSensitiveData\" }'"
 
       # Rate limiting analysis
-      rate_limited_ips = "aws logs filter-log-events --log-group-name ${var.enable_logging ? (var.create_log_group ? module.enterprise_waf.cloudwatch_log_group_name : split(":", var.existing_log_group_arn)[6]) : "N/A"} --filter-pattern '{ $.terminatingRuleId = \"StrictRateLimit\" || $.terminatingRuleId = \"APIRateLimit\" || $.terminatingRuleId = \"WebRateLimit\" }'"
+      rate_limited_ips = "aws logs filter-log-events --log-group-name ${var.enable_logging ? module.enterprise_waf.cloudwatch_log_group_name : "N/A"} --filter-pattern '{ $.terminatingRuleId = \"StrictRateLimit\" || $.terminatingRuleId = \"APIRateLimit\" || $.terminatingRuleId = \"WebRateLimit\" }'"
 
       # Compliance and audit queries
-      security_events_last_24h = "aws logs filter-log-events --log-group-name ${var.enable_logging ? (var.create_log_group ? module.enterprise_waf.cloudwatch_log_group_name : split(":", var.existing_log_group_arn)[6]) : "N/A"} --start-time $(date -d '24 hours ago' +%s)000 --filter-pattern '{ $.action = \"BLOCK\" }'"
-      traffic_volume_analysis  = "aws logs filter-log-events --log-group-name ${var.enable_logging ? (var.create_log_group ? module.enterprise_waf.cloudwatch_log_group_name : split(":", var.existing_log_group_arn)[6]) : "N/A"} --start-time $(date -d '1 hour ago' +%s)000 | jq '.events | length'"
+      security_events_last_24h = "aws logs filter-log-events --log-group-name ${var.enable_logging ? module.enterprise_waf.cloudwatch_log_group_name : "N/A"} --start-time $(date -d '24 hours ago' +%s)000 --filter-pattern '{ $.action = \"BLOCK\" }'"
+      traffic_volume_analysis  = "aws logs filter-log-events --log-group-name ${var.enable_logging ? module.enterprise_waf.cloudwatch_log_group_name : "N/A"} --start-time $(date -d '1 hour ago' +%s)000 | jq '.events | length'"
     } : null
 
     cloudwatch_insights_queries = var.enable_logging ? {
@@ -815,5 +815,44 @@ output "security_monitoring_commands" {
       rule_effectiveness = "aws logs filter-log-events --log-group-name ${var.enable_logging ? module.enterprise_waf.cloudwatch_log_group_name : "N/A"} --filter-pattern '{ $.action = \"BLOCK\" }' | jq '.events | group_by(.terminatingRuleId) | map({rule: .[0].terminatingRuleId, count: length})'"
       traffic_analysis   = "aws logs filter-log-events --log-group-name ${var.enable_logging ? module.enterprise_waf.cloudwatch_log_group_name : "N/A"} --start-time $(date -d '24 hours ago' +%s)000 | jq '.events | length'"
     }
+  }
+}
+# CloudWatch Log Group Information
+output "waf_log_group_name" {
+  description = "Name of the WAF CloudWatch log group (created or existing)"
+  value = var.enable_logging ? module.enterprise_waf.cloudwatch_log_group_name : null
+}
+
+output "waf_log_group_arn" {
+  description = "ARN of the WAF CloudWatch log group (created or existing)"
+  value = var.enable_logging ? module.enterprise_waf.cloudwatch_log_group_arn : null
+}
+
+# KMS Key Information
+output "waf_kms_key_id" {
+  description = "ID of the KMS key used for WAF log encryption (provided or created)"
+  value = var.enable_logging && var.enable_kms_encryption ? module.enterprise_waf.kms_key_id : null
+}
+
+output "waf_kms_key_arn" {
+  description = "ARN of the KMS key used for WAF log encryption (provided or created)"
+  value = var.enable_logging && var.enable_kms_encryption ? module.enterprise_waf.kms_key_arn : null
+}
+
+# Configuration Summary
+output "waf_logging_configuration_summary" {
+  description = "Summary of WAF logging configuration"
+  value = {
+    logging_enabled     = var.enable_logging
+    log_group_created   = var.enable_logging && var.create_log_group
+    existing_log_group  = var.enable_logging && !var.create_log_group && var.existing_log_group_arn != null
+    log_group_name      = var.enable_logging ? module.enterprise_waf.cloudwatch_log_group_name : null
+    log_group_arn       = var.enable_logging ? module.enterprise_waf.cloudwatch_log_group_arn : null
+    kms_encryption      = var.enable_logging && var.enable_kms_encryption
+    kms_key_provided    = var.enable_logging && var.enable_kms_encryption && var.kms_key_id != null
+    kms_key_created     = var.enable_logging && var.enable_kms_encryption && var.create_log_group && var.kms_key_id == null
+    kms_key_id          = var.enable_logging && var.enable_kms_encryption ? module.enterprise_waf.kms_key_id : null
+    kms_key_arn         = var.enable_logging && var.enable_kms_encryption ? module.enterprise_waf.kms_key_arn : null
+    retention_days      = var.enable_logging && var.create_log_group ? var.log_group_retention_days : null
   }
 }
