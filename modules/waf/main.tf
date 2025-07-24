@@ -294,6 +294,14 @@ resource "aws_wafv2_web_acl" "this" {
             content {
               limit              = rate_based_statement.value.limit
               aggregate_key_type = rate_based_statement.value.aggregate_key_type
+              
+              dynamic "forwarded_ip_config" {
+                for_each = (rate_based_statement.value.aggregate_key_type == "FORWARDED_IP" && rate_based_statement.value.forwarded_ip_config != null) ? [rate_based_statement.value.forwarded_ip_config] : []
+                content {
+                  header_name       = forwarded_ip_config.value.header_name
+                  fallback_behavior = forwarded_ip_config.value.fallback_behavior
+                }
+              }
             }
           }
           

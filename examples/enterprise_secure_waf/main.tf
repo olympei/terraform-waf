@@ -380,6 +380,10 @@ module "enterprise_rate_limiting" {
         rate_based_statement = {
           limit              = var.rate_limit_api
           aggregate_key_type = "FORWARDED_IP"
+          forwarded_ip_config = {
+            header_name       = "X-Forwarded-For"
+            fallback_behavior = "MATCH"
+          }
         }
       }
     },

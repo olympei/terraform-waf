@@ -125,6 +125,10 @@ variable "custom_rules" {
       rate_based_statement = optional(object({
         limit              = number
         aggregate_key_type = string  # IP, FORWARDED_IP
+        forwarded_ip_config = optional(object({
+          header_name       = string
+          fallback_behavior = string  # MATCH, NO_MATCH
+        }))
       }))
       
       # Geo Match Statement
