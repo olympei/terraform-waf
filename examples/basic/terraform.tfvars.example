@@ -1,0 +1,51 @@
+# Example terraform.tfvars for Basic WAF
+# Copy this file to terraform.tfvars and customize the values
+
+# WAF Configuration
+name           = "my-basic-waf"
+scope          = "REGIONAL"  # Use "CLOUDFRONT" for CloudFront distributions
+default_action = "allow"     # Default action when no rules match
+
+# ALB Association (optional)
+# Add your Application Load Balancer ARNs here
+alb_arn_list = [
+  # "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-web-app/1234567890123456",
+  # "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-api-app/1234567890123457"
+]
+
+# Resource Tags
+tags = {
+  Environment = "development"
+  Application = "web-application"
+  Owner       = "development-team"
+  Purpose     = "Basic WAF protection"
+  CostCenter  = "engineering"
+  Project     = "web-security"
+}
+
+# Example configurations for different environments:
+
+# Development Environment
+# name = "dev-basic-waf"
+# tags = {
+#   Environment = "development"
+#   Application = "dev-app"
+#   Owner       = "dev-team"
+# }
+
+# Staging Environment
+# name = "staging-basic-waf"
+# tags = {
+#   Environment = "staging"
+#   Application = "staging-app"
+#   Owner       = "qa-team"
+# }
+
+# Production Environment (consider using enterprise examples instead)
+# name = "prod-basic-waf"
+# tags = {
+#   Environment = "production"
+#   Application = "prod-app"
+#   Owner       = "ops-team"
+#   Criticality = "high"
+# }

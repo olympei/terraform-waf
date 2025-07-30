@@ -75,8 +75,48 @@ module "waf_basic" {
     }
   ]
 
-  # No custom inline rules for basic example
-  custom_inline_rules = []
+  # Custom inline rules for basic protection
+  custom_inline_rules = [
+    # Cross-Site Scripting (XSS) protection for request body
+    {
+      name        = "CrossSiteScripting_BODY"
+      priority    = 300
+      action      = "block"
+      metric_name = "CrossSiteScripting_BODY"
+      statement_config = {
+        xss_match_statement = {
+          field_to_match = {
+            body = {}
+          }
+          text_transformation = {
+            priority = 1
+            type     = "HTML_ENTITY_DECODE"
+          }
+        }
+      }
+    },
+    
+    # Size restrictions for request body (limit to 8KB)
+    {
+      name        = "SizeRestrictions_BODY"
+      priority    = 301
+      action      = "block"
+      metric_name = "SizeRestrictions_BODY"
+      statement_config = {
+        size_constraint_statement = {
+          comparison_operator = "GT"
+          size                = 8192  # 8KB limit
+          field_to_match = {
+            body = {}
+          }
+          text_transformation = {
+            priority = 0
+            type     = "NONE"
+          }
+        }
+      }
+    }
+  ]
 
   tags = var.tags
 }
@@ -110,13 +150,39 @@ output "basic_waf_summary" {
         "AWSManagedRulesSQLiRuleSet (Priority 200)"
       ]
       custom_rules = "None (basic example)"
-      inline_rules = "None (basic example)"
+      inline_rules = [
+        "CrossSiteScripting_BODY (Priority 300) - Blocks XSS attempts in request body",
+        "SizeRestrictions_BODY (Priority 301) - Blocks requests with body > 8KB"
+      ]
     }
     use_cases = [
       "Quick WAF deployment",
       "Basic web application protection",
-      "AWS managed rules only",
-      "Simple configuration"
+      "XSS protection for request bodies",
+      "Request size limiting",
+      "Simple configuration with essential rules"
     ]
+  }
+}
+
+output "custom_rules_details" {
+  description = "Details of the custom inline rules"
+  value = {
+    xss_protection = {
+      name        = "CrossSiteScripting_BODY"
+      priority    = 300
+      action      = "block"
+      description = "Blocks Cross-Site Scripting (XSS) attempts in request body"
+      field       = "body"
+      transformation = "HTML_ENTITY_DECODE"
+    }
+    size_restriction = {
+      name        = "SizeRestrictions_BODY"
+      priority    = 301
+      action      = "block"
+      description = "Blocks requests with body size greater than 8KB (8192 bytes)"
+      field       = "body"
+      size_limit  = "8192 bytes (8KB)"
+    }
   }
 }
