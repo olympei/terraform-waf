@@ -75,48 +75,148 @@ module "waf_basic" {
     }
   ]
 
-  # Custom inline rules for basic protection
+  # Custom inline rules with exceptions for /testo/ and /appgo/ paths
   custom_inline_rules = [
-    # Cross-Site Scripting (XSS) protection for request body
     {
-      name        = "CrossSiteScripting_BODY"
-      priority    = 300
+      name        = "CrossSiteScripting_BODY_Block"
+      priority    = 10
       action      = "block"
-      metric_name = "CrossSiteScripting_BODY"
-      statement_config = {
-        xss_match_statement = {
-          field_to_match = {
-            body = {}
-          }
-          text_transformation = {
-            priority = 1
-            type     = "HTML_ENTITY_DECODE"
-          }
+      rule_type   = "xss"
+      metric_name = "CrossSiteScripting_BODY_Block"
+      statement = jsonencode({
+        and_statement = {
+          statements = [
+            {
+              xss_match_statement = {
+                field_to_match = {
+                  body = {}
+                }
+                text_transformations = [
+                  {
+                    priority = 1
+                    type     = "URL_DECODE"
+                  },
+                  {
+                    priority = 2
+                    type     = "HTML_ENTITY_DECODE"
+                  }
+                ]
+              }
+            },
+            {
+              not_statement = {
+                statement = {
+                  or_statement = {
+                    statements = [
+                      {
+                        byte_match_statement = {
+                          field_to_match = {
+                            uri_path = {}
+                          }
+                          positional_constraint = "STARTS_WITH"
+                          search_string         = "/testo/"
+                          text_transformations = [
+                            {
+                              priority = 1
+                              type     = "LOWERCASE"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        byte_match_statement = {
+                          field_to_match = {
+                            uri_path = {}
+                          }
+                          positional_constraint = "STARTS_WITH"
+                          search_string         = "/appgo/"
+                          text_transformations = [
+                            {
+                              priority = 1
+                              type     = "LOWERCASE"
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
         }
-      }
+      })
     },
-    
-    # Size restrictions for request body (limit to 8KB)
     {
-      name        = "SizeRestrictions_BODY"
-      priority    = 301
+      name        = "SizeRestrictions_BODY_Block"
+      priority    = 20
       action      = "block"
-      metric_name = "SizeRestrictions_BODY"
-      statement_config = {
-        size_constraint_statement = {
-          comparison_operator = "GT"
-          size                = 8192  # 8KB limit
-          field_to_match = {
-            body = {}
-          }
-          text_transformation = {
-            priority = 0
-            type     = "NONE"
-          }
+      rule_type   = "size_restriction"
+      metric_name = "SizeRestrictions_BODY_Block"
+      statement = jsonencode({
+        and_statement = {
+          statements = [
+            {
+              size_constraint_statement = {
+                field_to_match = {
+                  body = {}
+                }
+                comparison_operator = "GT"
+                size                = 8192
+                text_transformations = [
+                  {
+                    priority = 1
+                    type     = "NONE"
+                  }
+                ]
+              }
+            },
+            {
+              not_statement = {
+                statement = {
+                  or_statement = {
+                    statements = [
+                      {
+                        byte_match_statement = {
+                          field_to_match = {
+                            uri_path = {}
+                          }
+                          positional_constraint = "STARTS_WITH"
+                          search_string         = "/testo/"
+                          text_transformations = [
+                            {
+                              priority = 1
+                              type     = "LOWERCASE"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        byte_match_statement = {
+                          field_to_match = {
+                            uri_path = {}
+                          }
+                          positional_constraint = "STARTS_WITH"
+                          search_string         = "/appgo/"
+                          text_transformations = [
+                            {
+                              priority = 1
+                              type     = "LOWERCASE"
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
         }
-      }
+      })
     }
   ]
+
 
   tags = var.tags
 }
@@ -151,38 +251,52 @@ output "basic_waf_summary" {
       ]
       custom_rules = "None (basic example)"
       inline_rules = [
-        "CrossSiteScripting_BODY (Priority 300) - Blocks XSS attempts in request body",
-        "SizeRestrictions_BODY (Priority 301) - Blocks requests with body > 8KB"
+        "CrossSiteScripting_BODY_Block (Priority 10) - Blocks XSS attempts in request body (except /testo/ and /appgo/)",
+        "SizeRestrictions_BODY_Block (Priority 20) - Blocks requests with body > 8KB (except /testo/ and /appgo/)"
       ]
     }
     use_cases = [
-      "Quick WAF deployment",
-      "Basic web application protection",
-      "XSS protection for request bodies",
-      "Request size limiting",
-      "Simple configuration with essential rules"
+      "Quick WAF deployment with URI exceptions",
+      "Basic web application protection with path-based allowlists",
+      "XSS protection for request bodies (with /testo/ and /appgo/ exceptions)",
+      "Request size limiting (with /testo/ and /appgo/ exceptions)",
+      "Simple configuration with essential rules and URI-based exceptions"
     ]
   }
 }
 
 output "custom_rules_details" {
-  description = "Details of the custom inline rules"
+  description = "Details of the custom inline rules with embedded URI exceptions"
   value = {
-    xss_protection = {
-      name        = "CrossSiteScripting_BODY"
-      priority    = 300
-      action      = "block"
-      description = "Blocks Cross-Site Scripting (XSS) attempts in request body"
-      field       = "body"
-      transformation = "HTML_ENTITY_DECODE"
+    xss_protection_with_exceptions = {
+      name            = "CrossSiteScripting_BODY_Block"
+      priority        = 10
+      action          = "block"
+      description     = "Blocks XSS attempts in request body using AND logic with NOT statement for URI exceptions"
+      field           = "body"
+      transformations = ["URL_DECODE", "HTML_ENTITY_DECODE"]
+      exceptions      = ["/testo/", "/appgo/"]
+      logic           = "Block if (XSS detected) AND NOT (URI starts with /testo/ OR /appgo/)"
     }
-    size_restriction = {
-      name        = "SizeRestrictions_BODY"
-      priority    = 301
+    size_restriction_with_exceptions = {
+      name        = "SizeRestrictions_BODY_Block"
+      priority    = 20
       action      = "block"
-      description = "Blocks requests with body size greater than 8KB (8192 bytes)"
+      description = "Blocks large request bodies using AND logic with NOT statement for URI exceptions"
       field       = "body"
       size_limit  = "8192 bytes (8KB)"
+      exceptions  = ["/testo/", "/appgo/"]
+      logic       = "Block if (body size > 8KB) AND NOT (URI starts with /testo/ OR /appgo/)"
+    }
+    implementation_approach = {
+      method = "Embedded exceptions using complex logical statements"
+      benefits = [
+        "More efficient - single rule evaluation",
+        "Cleaner logic - exceptions embedded in protection rules",
+        "Better performance - fewer rules to process",
+        "AWS WAF v2 best practice - uses complex logical statements"
+      ]
+      statement_structure = "AND(protection_condition, NOT(OR(exception1, exception2)))"
     }
   }
 }

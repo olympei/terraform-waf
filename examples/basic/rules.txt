@@ -1,0 +1,81 @@
+ # Exception rules (higher priority - execute first)
+    {
+      name        = "AllowTestoPath"
+      priority    = 50
+      action      = "allow"
+      metric_name = "allow_testo_path"
+      statement_config = {
+        byte_match_statement = {
+          search_string = "/testo/"
+          field_to_match = {
+            uri_path = {}
+          }
+          text_transformation = {
+            priority = 0
+            type     = "NONE"
+          }
+          positional_constraint = "CONTAINS"
+        }
+      }
+    },
+    {
+      name        = "AllowAppgoPath"
+      priority    = 51
+      action      = "allow"
+      metric_name = "allow_appgo_path"
+      statement_config = {
+        byte_match_statement = {
+          search_string = "/appgo/"
+          field_to_match = {
+            uri_path = {}
+          }
+          text_transformation = {
+            priority = 0
+            type     = "NONE"
+          }
+          positional_constraint = "CONTAINS"
+        }
+      }
+    },
+    
+    # Protection rules (lower priority - execute after exceptions)
+    # Cross-Site Scripting (XSS) protection for request body
+    {
+      name        = "CrossSiteScripting_BODY_Block"
+      priority    = 300
+      action      = "block"
+      metric_name = "CrossSiteScripting_BODY_Block"
+      statement_config = {
+        xss_match_statement = {
+          field_to_match = {
+            body = {}
+          }
+          text_transformation = {
+            priority = 1
+            type     = "HTML_ENTITY_DECODE"
+          }
+        }
+      }
+    },
+    
+    # Size restrictions for request body (limit to 8KB)
+    {
+      name        = "SizeRestrictions_BODY_Block"
+      priority    = 301
+      action      = "block"
+      metric_name = "SizeRestrictions_BODY_Block"
+      statement_config = {
+        size_constraint_statement = {
+          comparison_operator = "GT"
+          size                = 8192  # 8KB limit
+          field_to_match = {
+            body = {}
+          }
+          text_transformation = {
+            priority = 0
+            type     = "NONE"
+          }
+        }
+      }
+    }
+  ]
