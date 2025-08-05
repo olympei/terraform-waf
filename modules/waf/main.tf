@@ -98,16 +98,16 @@ resource "aws_wafv2_web_acl" "this" {
         for_each = (
           rule.value.statement != null ||
           (rule.value.statement_config != null && (
-            rule.value.statement_config.sqli_match_statement != null ||
-            rule.value.statement_config.xss_match_statement != null ||
-            rule.value.statement_config.ip_set_reference_statement != null ||
-            rule.value.statement_config.regex_pattern_set_reference_statement != null ||
-            rule.value.statement_config.byte_match_statement != null ||
-            rule.value.statement_config.rate_based_statement != null ||
-            rule.value.statement_config.geo_match_statement != null ||
-            rule.value.statement_config.size_constraint_statement != null ||
-            rule.value.statement_config.and_statement != null ||
-            rule.value.statement_config.or_statement != null
+            try(rule.value.statement_config.sqli_match_statement, null) != null ||
+            try(rule.value.statement_config.xss_match_statement, null) != null ||
+            try(rule.value.statement_config.ip_set_reference_statement, null) != null ||
+            try(rule.value.statement_config.regex_pattern_set_reference_statement, null) != null ||
+            try(rule.value.statement_config.byte_match_statement, null) != null ||
+            try(rule.value.statement_config.rate_based_statement, null) != null ||
+            try(rule.value.statement_config.geo_match_statement, null) != null ||
+            try(rule.value.statement_config.size_constraint_statement, null) != null ||
+            try(rule.value.statement_config.and_statement, null) != null ||
+            try(rule.value.statement_config.or_statement, null) != null
           ))
         ) ? [1] : []
         content {
