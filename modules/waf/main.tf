@@ -293,233 +293,233 @@ resource "aws_wafv2_web_acl" "this" {
           
           # New object-based statements
           dynamic "sqli_match_statement" {
-            for_each = rule.value.statement_config != null && rule.value.statement_config.sqli_match_statement != null ? [rule.value.statement_config.sqli_match_statement] : []
+            for_each = try(rule.value.statement_config != null && rule.value.statement_config.sqli_match_statement != null, false) ? [rule.value.statement_config.sqli_match_statement] : []
             content {
               field_to_match {
                 dynamic "body" {
-                  for_each = sqli_match_statement.value.field_to_match.body != null ? [1] : []
+                  for_each = try(sqli_match_statement.value.field_to_match.body != null, false) ? [1] : []
                   content {}
                 }
                 dynamic "uri_path" {
-                  for_each = sqli_match_statement.value.field_to_match.uri_path != null ? [1] : []
+                  for_each = try(sqli_match_statement.value.field_to_match.uri_path != null, false) ? [1] : []
                   content {}
                 }
                 dynamic "query_string" {
-                  for_each = sqli_match_statement.value.field_to_match.query_string != null ? [1] : []
+                  for_each = try(sqli_match_statement.value.field_to_match.query_string != null, false) ? [1] : []
                   content {}
                 }
                 dynamic "all_query_arguments" {
-                  for_each = sqli_match_statement.value.field_to_match.all_query_arguments != null ? [1] : []
+                  for_each = try(sqli_match_statement.value.field_to_match.all_query_arguments != null, false) ? [1] : []
                   content {}
                 }
                 dynamic "single_header" {
-                  for_each = sqli_match_statement.value.field_to_match.single_header != null ? [sqli_match_statement.value.field_to_match.single_header] : []
+                  for_each = try(sqli_match_statement.value.field_to_match.single_header != null, false) ? [sqli_match_statement.value.field_to_match.single_header] : []
                   content {
                     name = single_header.value.name
                   }
                 }
                 dynamic "method" {
-                  for_each = sqli_match_statement.value.field_to_match.method != null ? [1] : []
+                  for_each = try(sqli_match_statement.value.field_to_match.method != null, false) ? [1] : []
                   content {}
                 }
               }
               text_transformation {
-                priority = sqli_match_statement.value.text_transformation.priority
-                type     = sqli_match_statement.value.text_transformation.type
+                priority = try(sqli_match_statement.value.text_transformation.priority, 0)
+                type     = try(sqli_match_statement.value.text_transformation.type, "NONE")
               }
             }
           }
           
           dynamic "xss_match_statement" {
-            for_each = rule.value.statement_config != null && rule.value.statement_config.xss_match_statement != null ? [rule.value.statement_config.xss_match_statement] : []
+            for_each = try(rule.value.statement_config != null && rule.value.statement_config.xss_match_statement != null, false) ? [rule.value.statement_config.xss_match_statement] : []
             content {
               field_to_match {
                 dynamic "body" {
-                  for_each = xss_match_statement.value.field_to_match.body != null ? [1] : []
+                  for_each = try(xss_match_statement.value.field_to_match.body != null, false) ? [1] : []
                   content {}
                 }
                 dynamic "uri_path" {
-                  for_each = xss_match_statement.value.field_to_match.uri_path != null ? [1] : []
+                  for_each = try(xss_match_statement.value.field_to_match.uri_path != null, false) ? [1] : []
                   content {}
                 }
                 dynamic "query_string" {
-                  for_each = xss_match_statement.value.field_to_match.query_string != null ? [1] : []
+                  for_each = try(xss_match_statement.value.field_to_match.query_string != null, false) ? [1] : []
                   content {}
                 }
                 dynamic "all_query_arguments" {
-                  for_each = xss_match_statement.value.field_to_match.all_query_arguments != null ? [1] : []
+                  for_each = try(xss_match_statement.value.field_to_match.all_query_arguments != null, false) ? [1] : []
                   content {}
                 }
                 dynamic "single_header" {
-                  for_each = xss_match_statement.value.field_to_match.single_header != null ? [xss_match_statement.value.field_to_match.single_header] : []
+                  for_each = try(xss_match_statement.value.field_to_match.single_header != null, false) ? [xss_match_statement.value.field_to_match.single_header] : []
                   content {
                     name = single_header.value.name
                   }
                 }
                 dynamic "method" {
-                  for_each = xss_match_statement.value.field_to_match.method != null ? [1] : []
+                  for_each = try(xss_match_statement.value.field_to_match.method != null, false) ? [1] : []
                   content {}
                 }
               }
               text_transformation {
-                priority = xss_match_statement.value.text_transformation.priority
-                type     = xss_match_statement.value.text_transformation.type
+                priority = try(xss_match_statement.value.text_transformation.priority, 0)
+                type     = try(xss_match_statement.value.text_transformation.type, "NONE")
               }
             }
           }
           
           dynamic "ip_set_reference_statement" {
-            for_each = rule.value.statement_config != null && rule.value.statement_config.ip_set_reference_statement != null ? [rule.value.statement_config.ip_set_reference_statement] : []
+            for_each = try(rule.value.statement_config != null && rule.value.statement_config.ip_set_reference_statement != null, false) ? [rule.value.statement_config.ip_set_reference_statement] : []
             content {
-              arn = ip_set_reference_statement.value.arn
+              arn = try(ip_set_reference_statement.value.arn, "")
             }
           }
           
           dynamic "regex_pattern_set_reference_statement" {
-            for_each = rule.value.statement_config != null && rule.value.statement_config.regex_pattern_set_reference_statement != null ? [rule.value.statement_config.regex_pattern_set_reference_statement] : []
+            for_each = try(rule.value.statement_config != null && rule.value.statement_config.regex_pattern_set_reference_statement != null, false) ? [rule.value.statement_config.regex_pattern_set_reference_statement] : []
             content {
-              arn = regex_pattern_set_reference_statement.value.arn
+              arn = try(regex_pattern_set_reference_statement.value.arn, "")
               field_to_match {
                 dynamic "body" {
-                  for_each = regex_pattern_set_reference_statement.value.field_to_match.body != null ? [1] : []
+                  for_each = try(regex_pattern_set_reference_statement.value.field_to_match.body != null, false) ? [1] : []
                   content {}
                 }
                 dynamic "uri_path" {
-                  for_each = regex_pattern_set_reference_statement.value.field_to_match.uri_path != null ? [1] : []
+                  for_each = try(regex_pattern_set_reference_statement.value.field_to_match.uri_path != null, false) ? [1] : []
                   content {}
                 }
                 dynamic "query_string" {
-                  for_each = regex_pattern_set_reference_statement.value.field_to_match.query_string != null ? [1] : []
+                  for_each = try(regex_pattern_set_reference_statement.value.field_to_match.query_string != null, false) ? [1] : []
                   content {}
                 }
                 dynamic "all_query_arguments" {
-                  for_each = regex_pattern_set_reference_statement.value.field_to_match.all_query_arguments != null ? [1] : []
+                  for_each = try(regex_pattern_set_reference_statement.value.field_to_match.all_query_arguments != null, false) ? [1] : []
                   content {}
                 }
                 dynamic "single_header" {
-                  for_each = regex_pattern_set_reference_statement.value.field_to_match.single_header != null ? [regex_pattern_set_reference_statement.value.field_to_match.single_header] : []
+                  for_each = try(regex_pattern_set_reference_statement.value.field_to_match.single_header != null, false) ? [regex_pattern_set_reference_statement.value.field_to_match.single_header] : []
                   content {
                     name = single_header.value.name
                   }
                 }
                 dynamic "method" {
-                  for_each = regex_pattern_set_reference_statement.value.field_to_match.method != null ? [1] : []
+                  for_each = try(regex_pattern_set_reference_statement.value.field_to_match.method != null, false) ? [1] : []
                   content {}
                 }
               }
               text_transformation {
-                priority = regex_pattern_set_reference_statement.value.text_transformation.priority
-                type     = regex_pattern_set_reference_statement.value.text_transformation.type
+                priority = try(regex_pattern_set_reference_statement.value.text_transformation.priority, 0)
+                type     = try(regex_pattern_set_reference_statement.value.text_transformation.type, "NONE")
               }
             }
           }
           
           dynamic "byte_match_statement" {
-            for_each = rule.value.statement_config != null && rule.value.statement_config.byte_match_statement != null ? [rule.value.statement_config.byte_match_statement] : []
+            for_each = try(rule.value.statement_config != null && rule.value.statement_config.byte_match_statement != null, false) ? [rule.value.statement_config.byte_match_statement] : []
             content {
-              search_string = byte_match_statement.value.search_string
-              positional_constraint = byte_match_statement.value.positional_constraint
+              search_string = try(byte_match_statement.value.search_string, "")
+              positional_constraint = try(byte_match_statement.value.positional_constraint, "CONTAINS")
               field_to_match {
                 dynamic "body" {
-                  for_each = byte_match_statement.value.field_to_match.body != null ? [1] : []
+                  for_each = try(byte_match_statement.value.field_to_match.body != null, false) ? [1] : []
                   content {}
                 }
                 dynamic "uri_path" {
-                  for_each = byte_match_statement.value.field_to_match.uri_path != null ? [1] : []
+                  for_each = try(byte_match_statement.value.field_to_match.uri_path != null, false) ? [1] : []
                   content {}
                 }
                 dynamic "query_string" {
-                  for_each = byte_match_statement.value.field_to_match.query_string != null ? [1] : []
+                  for_each = try(byte_match_statement.value.field_to_match.query_string != null, false) ? [1] : []
                   content {}
                 }
                 dynamic "all_query_arguments" {
-                  for_each = byte_match_statement.value.field_to_match.all_query_arguments != null ? [1] : []
+                  for_each = try(byte_match_statement.value.field_to_match.all_query_arguments != null, false) ? [1] : []
                   content {}
                 }
                 dynamic "single_header" {
-                  for_each = byte_match_statement.value.field_to_match.single_header != null ? [byte_match_statement.value.field_to_match.single_header] : []
+                  for_each = try(byte_match_statement.value.field_to_match.single_header != null, false) ? [byte_match_statement.value.field_to_match.single_header] : []
                   content {
                     name = single_header.value.name
                   }
                 }
                 dynamic "method" {
-                  for_each = byte_match_statement.value.field_to_match.method != null ? [1] : []
+                  for_each = try(byte_match_statement.value.field_to_match.method != null, false) ? [1] : []
                   content {}
                 }
               }
               text_transformation {
-                priority = byte_match_statement.value.text_transformation.priority
-                type     = byte_match_statement.value.text_transformation.type
+                priority = try(byte_match_statement.value.text_transformation.priority, 0)
+                type     = try(byte_match_statement.value.text_transformation.type, "NONE")
               }
             }
           }
           
           dynamic "rate_based_statement" {
-            for_each = rule.value.statement_config != null && rule.value.statement_config.rate_based_statement != null ? [rule.value.statement_config.rate_based_statement] : []
+            for_each = try(rule.value.statement_config != null && rule.value.statement_config.rate_based_statement != null, false) ? [rule.value.statement_config.rate_based_statement] : []
             content {
-              limit              = rate_based_statement.value.limit
-              aggregate_key_type = rate_based_statement.value.aggregate_key_type
+              limit              = try(rate_based_statement.value.limit, 2000)
+              aggregate_key_type = try(rate_based_statement.value.aggregate_key_type, "IP")
               
               dynamic "forwarded_ip_config" {
-                for_each = (rate_based_statement.value.aggregate_key_type == "FORWARDED_IP" && rate_based_statement.value.forwarded_ip_config != null) ? [rate_based_statement.value.forwarded_ip_config] : []
+                for_each = try((rate_based_statement.value.aggregate_key_type == "FORWARDED_IP" && rate_based_statement.value.forwarded_ip_config != null), false) ? [rate_based_statement.value.forwarded_ip_config] : []
                 content {
-                  header_name       = forwarded_ip_config.value.header_name
-                  fallback_behavior = forwarded_ip_config.value.fallback_behavior
+                  header_name       = try(forwarded_ip_config.value.header_name, "")
+                  fallback_behavior = try(forwarded_ip_config.value.fallback_behavior, "MATCH")
                 }
               }
             }
           }
           
           dynamic "geo_match_statement" {
-            for_each = rule.value.statement_config != null && rule.value.statement_config.geo_match_statement != null ? [rule.value.statement_config.geo_match_statement] : []
+            for_each = try(rule.value.statement_config != null && rule.value.statement_config.geo_match_statement != null, false) ? [rule.value.statement_config.geo_match_statement] : []
             content {
-              country_codes = geo_match_statement.value.country_codes
+              country_codes = try(geo_match_statement.value.country_codes, [])
             }
           }
           
           dynamic "size_constraint_statement" {
-            for_each = rule.value.statement_config != null && rule.value.statement_config.size_constraint_statement != null ? [rule.value.statement_config.size_constraint_statement] : []
+            for_each = try(rule.value.statement_config != null && rule.value.statement_config.size_constraint_statement != null, false) ? [rule.value.statement_config.size_constraint_statement] : []
             content {
-              comparison_operator = size_constraint_statement.value.comparison_operator
-              size               = size_constraint_statement.value.size
+              comparison_operator = try(size_constraint_statement.value.comparison_operator, "GT")
+              size               = try(size_constraint_statement.value.size, 8192)
               field_to_match {
                 dynamic "body" {
-                  for_each = size_constraint_statement.value.field_to_match.body != null ? [1] : []
+                  for_each = try(size_constraint_statement.value.field_to_match.body != null, false) ? [1] : []
                   content {}
                 }
                 dynamic "uri_path" {
-                  for_each = size_constraint_statement.value.field_to_match.uri_path != null ? [1] : []
+                  for_each = try(size_constraint_statement.value.field_to_match.uri_path != null, false) ? [1] : []
                   content {}
                 }
                 dynamic "query_string" {
-                  for_each = size_constraint_statement.value.field_to_match.query_string != null ? [1] : []
+                  for_each = try(size_constraint_statement.value.field_to_match.query_string != null, false) ? [1] : []
                   content {}
                 }
                 dynamic "all_query_arguments" {
-                  for_each = size_constraint_statement.value.field_to_match.all_query_arguments != null ? [1] : []
+                  for_each = try(size_constraint_statement.value.field_to_match.all_query_arguments != null, false) ? [1] : []
                   content {}
                 }
                 dynamic "single_header" {
-                  for_each = size_constraint_statement.value.field_to_match.single_header != null ? [size_constraint_statement.value.field_to_match.single_header] : []
+                  for_each = try(size_constraint_statement.value.field_to_match.single_header != null, false) ? [size_constraint_statement.value.field_to_match.single_header] : []
                   content {
                     name = single_header.value.name
                   }
                 }
                 dynamic "method" {
-                  for_each = size_constraint_statement.value.field_to_match.method != null ? [1] : []
+                  for_each = try(size_constraint_statement.value.field_to_match.method != null, false) ? [1] : []
                   content {}
                 }
               }
               text_transformation {
-                priority = size_constraint_statement.value.text_transformation.priority
-                type     = size_constraint_statement.value.text_transformation.type
+                priority = try(size_constraint_statement.value.text_transformation.priority, 0)
+                type     = try(size_constraint_statement.value.text_transformation.type, "NONE")
               }
             }
           }
 
           # AND Statement (for combining multiple conditions)
           dynamic "and_statement" {
-            for_each = rule.value.statement_config != null && rule.value.statement_config.and_statement != null ? [rule.value.statement_config.and_statement] : []
+            for_each = try(rule.value.statement_config != null && rule.value.statement_config.and_statement != null, false) ? [rule.value.statement_config.and_statement] : []
             content {
               dynamic "statement" {
                 for_each = and_statement.value.statements
@@ -579,7 +579,7 @@ resource "aws_wafv2_web_acl" "this" {
 
           # OR Statement (for alternative conditions)
           dynamic "or_statement" {
-            for_each = rule.value.statement_config != null && rule.value.statement_config.or_statement != null ? [rule.value.statement_config.or_statement] : []
+            for_each = try(rule.value.statement_config != null && rule.value.statement_config.or_statement != null, false) ? [rule.value.statement_config.or_statement] : []
             content {
               dynamic "statement" {
                 for_each = or_statement.value.statements
