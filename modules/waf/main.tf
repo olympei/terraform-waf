@@ -111,6 +111,171 @@ resource "aws_wafv2_web_acl" "this" {
           ))
         ) ? [1] : []
         content {
+          # JSON-encoded complex statement support
+          dynamic "and_statement" {
+            for_each = try(
+              rule.value.statement != null && 
+              jsondecode(rule.value.statement).and_statement != null ? 
+              [jsondecode(rule.value.statement).and_statement] : [], 
+              []
+            )
+            content {
+              dynamic "statement" {
+                for_each = and_statement.value.statements
+                content {
+                  # XSS Match Statement in AND
+                  dynamic "xss_match_statement" {
+                    for_each = try(statement.value.xss_match_statement != null ? [statement.value.xss_match_statement] : [], [])
+                    content {
+                      field_to_match {
+                        dynamic "body" {
+                          for_each = try(xss_match_statement.value.field_to_match.body != null ? [1] : [], [])
+                          content {}
+                        }
+                        dynamic "uri_path" {
+                          for_each = try(xss_match_statement.value.field_to_match.uri_path != null ? [1] : [], [])
+                          content {}
+                        }
+                        dynamic "query_string" {
+                          for_each = try(xss_match_statement.value.field_to_match.query_string != null ? [1] : [], [])
+                          content {}
+                        }
+                        dynamic "all_query_arguments" {
+                          for_each = try(xss_match_statement.value.field_to_match.all_query_arguments != null ? [1] : [], [])
+                          content {}
+                        }
+                        dynamic "single_header" {
+                          for_each = try(xss_match_statement.value.field_to_match.single_header != null ? [xss_match_statement.value.field_to_match.single_header] : [], [])
+                          content {
+                            name = single_header.value.name
+                          }
+                        }
+                        dynamic "method" {
+                          for_each = try(xss_match_statement.value.field_to_match.method != null ? [1] : [], [])
+                          content {}
+                        }
+                      }
+                      dynamic "text_transformation" {
+                        for_each = try(xss_match_statement.value.text_transformations != null ? xss_match_statement.value.text_transformations : [], [])
+                        content {
+                          priority = text_transformation.value.priority
+                          type     = text_transformation.value.type
+                        }
+                      }
+                    }
+                  }
+                  
+                  # Size Constraint Statement in AND
+                  dynamic "size_constraint_statement" {
+                    for_each = try(statement.value.size_constraint_statement != null ? [statement.value.size_constraint_statement] : [], [])
+                    content {
+                      comparison_operator = size_constraint_statement.value.comparison_operator
+                      size               = size_constraint_statement.value.size
+                      field_to_match {
+                        dynamic "body" {
+                          for_each = try(size_constraint_statement.value.field_to_match.body != null ? [1] : [], [])
+                          content {}
+                        }
+                        dynamic "uri_path" {
+                          for_each = try(size_constraint_statement.value.field_to_match.uri_path != null ? [1] : [], [])
+                          content {}
+                        }
+                        dynamic "query_string" {
+                          for_each = try(size_constraint_statement.value.field_to_match.query_string != null ? [1] : [], [])
+                          content {}
+                        }
+                        dynamic "all_query_arguments" {
+                          for_each = try(size_constraint_statement.value.field_to_match.all_query_arguments != null ? [1] : [], [])
+                          content {}
+                        }
+                        dynamic "single_header" {
+                          for_each = try(size_constraint_statement.value.field_to_match.single_header != null ? [size_constraint_statement.value.field_to_match.single_header] : [], [])
+                          content {
+                            name = single_header.value.name
+                          }
+                        }
+                        dynamic "method" {
+                          for_each = try(size_constraint_statement.value.field_to_match.method != null ? [1] : [], [])
+                          content {}
+                        }
+                      }
+                      dynamic "text_transformation" {
+                        for_each = try(size_constraint_statement.value.text_transformations != null ? size_constraint_statement.value.text_transformations : [], [])
+                        content {
+                          priority = text_transformation.value.priority
+                          type     = text_transformation.value.type
+                        }
+                      }
+                    }
+                  }
+                  
+                  # NOT Statement in AND
+                  dynamic "not_statement" {
+                    for_each = try(statement.value.not_statement != null ? [statement.value.not_statement] : [], [])
+                    content {
+                      statement {
+                        # OR Statement inside NOT
+                        dynamic "or_statement" {
+                          for_each = try(not_statement.value.statement.or_statement != null ? [not_statement.value.statement.or_statement] : [], [])
+                          content {
+                            dynamic "statement" {
+                              for_each = or_statement.value.statements
+                              content {
+                                # Byte Match Statement in OR
+                                dynamic "byte_match_statement" {
+                                  for_each = try(statement.value.byte_match_statement != null ? [statement.value.byte_match_statement] : [], [])
+                                  content {
+                                    search_string = byte_match_statement.value.search_string
+                                    positional_constraint = byte_match_statement.value.positional_constraint
+                                    field_to_match {
+                                      dynamic "body" {
+                                        for_each = try(byte_match_statement.value.field_to_match.body != null ? [1] : [], [])
+                                        content {}
+                                      }
+                                      dynamic "uri_path" {
+                                        for_each = try(byte_match_statement.value.field_to_match.uri_path != null ? [1] : [], [])
+                                        content {}
+                                      }
+                                      dynamic "query_string" {
+                                        for_each = try(byte_match_statement.value.field_to_match.query_string != null ? [1] : [], [])
+                                        content {}
+                                      }
+                                      dynamic "all_query_arguments" {
+                                        for_each = try(byte_match_statement.value.field_to_match.all_query_arguments != null ? [1] : [], [])
+                                        content {}
+                                      }
+                                      dynamic "single_header" {
+                                        for_each = try(byte_match_statement.value.field_to_match.single_header != null ? [byte_match_statement.value.field_to_match.single_header] : [], [])
+                                        content {
+                                          name = single_header.value.name
+                                        }
+                                      }
+                                      dynamic "method" {
+                                        for_each = try(byte_match_statement.value.field_to_match.method != null ? [1] : [], [])
+                                        content {}
+                                      }
+                                    }
+                                    dynamic "text_transformation" {
+                                      for_each = try(byte_match_statement.value.text_transformations != null ? byte_match_statement.value.text_transformations : [], [])
+                                      content {
+                                        priority = text_transformation.value.priority
+                                        type     = text_transformation.value.type
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          
           # Legacy string statement (deprecated but supported)
           dynamic "sqli_match_statement" {
             for_each = try(rule.value.statement != null && contains(rule.value.statement, "sqli_match_statement"), false) ? [1] : []
@@ -459,6 +624,102 @@ resource "aws_wafv2_web_acl" "this" {
                       }
                     }
                   }
+                }
+              }
+            }
+          }
+          
+          # Standalone JSON-encoded XSS Match Statement
+          dynamic "xss_match_statement" {
+            for_each = try(
+              rule.value.statement != null && 
+              jsondecode(rule.value.statement).xss_match_statement != null ? 
+              [jsondecode(rule.value.statement).xss_match_statement] : [], 
+              []
+            )
+            content {
+              field_to_match {
+                dynamic "body" {
+                  for_each = try(xss_match_statement.value.field_to_match.body != null ? [1] : [], [])
+                  content {}
+                }
+                dynamic "uri_path" {
+                  for_each = try(xss_match_statement.value.field_to_match.uri_path != null ? [1] : [], [])
+                  content {}
+                }
+                dynamic "query_string" {
+                  for_each = try(xss_match_statement.value.field_to_match.query_string != null ? [1] : [], [])
+                  content {}
+                }
+                dynamic "all_query_arguments" {
+                  for_each = try(xss_match_statement.value.field_to_match.all_query_arguments != null ? [1] : [], [])
+                  content {}
+                }
+                dynamic "single_header" {
+                  for_each = try(xss_match_statement.value.field_to_match.single_header != null ? [xss_match_statement.value.field_to_match.single_header] : [], [])
+                  content {
+                    name = single_header.value.name
+                  }
+                }
+                dynamic "method" {
+                  for_each = try(xss_match_statement.value.field_to_match.method != null ? [1] : [], [])
+                  content {}
+                }
+              }
+              dynamic "text_transformation" {
+                for_each = try(xss_match_statement.value.text_transformations != null ? xss_match_statement.value.text_transformations : [], [])
+                content {
+                  priority = text_transformation.value.priority
+                  type     = text_transformation.value.type
+                }
+              }
+            }
+          }
+          
+          # Standalone JSON-encoded Size Constraint Statement
+          dynamic "size_constraint_statement" {
+            for_each = try(
+              rule.value.statement != null && 
+              jsondecode(rule.value.statement).size_constraint_statement != null ? 
+              [jsondecode(rule.value.statement).size_constraint_statement] : [], 
+              []
+            )
+            content {
+              comparison_operator = size_constraint_statement.value.comparison_operator
+              size               = size_constraint_statement.value.size
+              field_to_match {
+                dynamic "body" {
+                  for_each = try(size_constraint_statement.value.field_to_match.body != null ? [1] : [], [])
+                  content {}
+                }
+                dynamic "uri_path" {
+                  for_each = try(size_constraint_statement.value.field_to_match.uri_path != null ? [1] : [], [])
+                  content {}
+                }
+                dynamic "query_string" {
+                  for_each = try(size_constraint_statement.value.field_to_match.query_string != null ? [1] : [], [])
+                  content {}
+                }
+                dynamic "all_query_arguments" {
+                  for_each = try(size_constraint_statement.value.field_to_match.all_query_arguments != null ? [1] : [], [])
+                  content {}
+                }
+                dynamic "single_header" {
+                  for_each = try(size_constraint_statement.value.field_to_match.single_header != null ? [size_constraint_statement.value.field_to_match.single_header] : [], [])
+                  content {
+                    name = single_header.value.name
+                  }
+                }
+                dynamic "method" {
+                  for_each = try(size_constraint_statement.value.field_to_match.method != null ? [1] : [], [])
+                  content {}
+                }
+              }
+              dynamic "text_transformation" {
+                for_each = try(size_constraint_statement.value.text_transformations != null ? size_constraint_statement.value.text_transformations : [], [])
+                content {
+                  priority = text_transformation.value.priority
+                  type     = text_transformation.value.type
                 }
               }
             }

@@ -314,3 +314,268 @@ output "zero_trust_configuration" {
     ]
   }
 }
+
+
+
+provider "aws" {
+  region = "us-east-1"
+}
+
+# Variables for basic configuration
+variable "name" {
+  description = "Name of the WAF ACL"
+  type        = string
+  default     = "basic-waf"
+}
+
+variable "scope" {
+  description = "Scope of the WAF (REGIONAL or CLOUDFRONT)"
+  type        = string
+  default     = "REGIONAL"
+
+  validation {
+    condition     = contains(["REGIONAL", "CLOUDFRONT"], var.scope)
+    error_message = "Scope must be either REGIONAL or CLOUDFRONT."
+  }
+}
+
+variable "default_action" {
+  description = "Default action for the WAF (allow or block)"
+  type        = string
+  default     = "allow"
+
+  validation {
+    condition     = contains(["allow", "block"], var.default_action)
+    error_message = "Default action must be either allow or block."
+  }
+}
+
+variable "alb_arn_list" {
+  description = "List of ALB ARNs to associate with the WAF (optional)"
+  type        = list(string)
+  default     = []
+}
+
+variable "tags" {
+  description = "Tags to apply to WAF resources"
+  type        = map(string)
+  default = {
+    Environment = "basic"
+    Purpose     = "Basic WAF Example"
+    Example     = "basic"
+  }
+}
+
+# Basic WAF ACL with essential AWS managed rules
+module "waf_basic" {
+  source = "../../modules/waf"
+
+  name           = var.name
+  scope          = var.scope
+  default_action = var.default_action
+  alb_arn_list   = var.alb_arn_list
+
+  # No custom rule groups
+  rule_group_arn_list = []
+
+  # Basic AWS managed rules for essential protection
+  aws_managed_rule_groups = [
+    {
+      name            = "AWSManagedRulesCommonRuleSet"
+      vendor_name     = "AWS"
+      priority        = 100
+      override_action = "none"
+    },
+    {
+      name            = "AWSManagedRulesSQLiRuleSet"
+      vendor_name     = "AWS"
+      priority        = 200
+      override_action = "none"
+    }
+  ]
+
+  # Custom inline rules with exceptions for /testo/ and /appgo/ paths
+  custom_inline_rules = [
+    # Exception rules (higher priority - execute first)
+    {
+      name        = "AllowTestoPath"
+      priority    = 50
+      action      = "allow"
+      metric_name = "allow_testo_path"
+      statement_config = {
+        byte_match_statement = {
+          search_string = "/testo/"
+          field_to_match = {
+            uri_path = {}
+          }
+          text_transformation = {
+            priority = 0
+            type     = "NONE"
+          }
+          positional_constraint = "CONTAINS"
+        }
+      }
+    },
+    {
+      name        = "AllowAppgoPath"
+      priority    = 51
+      action      = "allow"
+      metric_name = "allow_appgo_path"
+      statement_config = {
+        byte_match_statement = {
+          search_string = "/appgo/"
+          field_to_match = {
+            uri_path = {}
+          }
+          text_transformation = {
+            priority = 0
+            type     = "NONE"
+          }
+          positional_constraint = "CONTAINS"
+        }
+      }
+    },
+    
+    # Protection rules (lower priority - execute after exceptions)
+    {
+      name        = "CrossSiteScripting_BODY_Block"
+      priority    = 300
+      action      = "block"
+      metric_name = "CrossSiteScripting_BODY_Block"
+      statement_config = {
+        xss_match_statement = {
+          field_to_match = {
+            body = {}
+          }
+          text_transformation = {
+            priority = 1
+            type     = "HTML_ENTITY_DECODE"
+          }
+        }
+      }
+    },
+    
+    {
+      name        = "SizeRestrictions_BODY_Block"
+      priority    = 301
+      action      = "block"
+      metric_name = "SizeRestrictions_BODY_Block"
+      statement_config = {
+        size_constraint_statement = {
+          comparison_operator = "GT"
+          size                = 8192  # 8KB limit
+          field_to_match = {
+            body = {}
+          }
+          text_transformation = {
+            priority = 0
+            type     = "NONE"
+          }
+        }
+      }
+    }
+  ]
+
+
+  tags = var.tags
+}
+
+# Outputs
+output "waf_acl_arn" {
+  description = "ARN of the basic WAF ACL"
+  value       = module.waf_basic.web_acl_arn
+}
+
+output "waf_acl_id" {
+  description = "ID of the basic WAF ACL"
+  value       = module.waf_basic.web_acl_id
+}
+
+output "waf_acl_name" {
+  description = "Name of the basic WAF ACL"
+  value       = var.name
+}
+
+output "basic_waf_summary" {
+  description = "Summary of the basic WAF configuration"
+  value = {
+    name           = var.name
+    scope          = var.scope
+    default_action = var.default_action
+    arn            = module.waf_basic.web_acl_arn
+    protection = {
+      aws_managed_rules = [
+        "AWSManagedRulesCommonRuleSet (Priority 100)",
+        "AWSManagedRulesSQLiRuleSet (Priority 200)"
+      ]
+      custom_rules = "None (basic example)"
+      inline_rules = [
+        "AllowTestoPath (Priority 50) - Allows all traffic to /testo/ paths",
+        "AllowAppgoPath (Priority 51) - Allows all traffic to /appgo/ paths",
+        "CrossSiteScripting_BODY_Block (Priority 300) - Blocks XSS attempts in request body",
+        "SizeRestrictions_BODY_Block (Priority 301) - Blocks requests with body > 8KB"
+      ]
+    }
+    use_cases = [
+      "Quick WAF deployment with URI exceptions",
+      "Basic web application protection with path-based allowlists",
+      "XSS protection for request bodies (with /testo/ and /appgo/ exceptions)",
+      "Request size limiting (with /testo/ and /appgo/ exceptions)",
+      "Simple configuration with essential rules and URI-based exceptions"
+    ]
+  }
+}
+
+output "custom_rules_details" {
+  description = "Details of the custom inline rules with URI exceptions using priority-based approach"
+  value = {
+    exception_rules = {
+      testo_path_exception = {
+        name        = "AllowTestoPath"
+        priority    = 50
+        action      = "allow"
+        description = "Allows all traffic to /testo/ paths (bypasses all blocking rules)"
+        uri_pattern = "/testo/"
+        logic       = "Allow if URI contains /testo/"
+      }
+      appgo_path_exception = {
+        name        = "AllowAppgoPath"
+        priority    = 51
+        action      = "allow"
+        description = "Allows all traffic to /appgo/ paths (bypasses all blocking rules)"
+        uri_pattern = "/appgo/"
+        logic       = "Allow if URI contains /appgo/"
+      }
+    }
+    protection_rules = {
+      xss_protection = {
+        name        = "CrossSiteScripting_BODY_Block"
+        priority    = 300
+        action      = "block"
+        description = "Blocks Cross-Site Scripting (XSS) attempts in request body"
+        field       = "body"
+        transformation = "HTML_ENTITY_DECODE"
+        logic       = "Block if XSS detected in body"
+      }
+      size_restriction = {
+        name        = "SizeRestrictions_BODY_Block"
+        priority    = 301
+        action      = "block"
+        description = "Blocks requests with body size greater than 8KB"
+        field       = "body"
+        size_limit  = "8192 bytes (8KB)"
+        logic       = "Block if body size > 8KB"
+      }
+    }
+    implementation_approach = {
+      method = "Priority-based exceptions using separate allow rules"
+      benefits = [
+        "Compatible with current WAF module capabilities",
+        "Clear separation of exception and protection logic",
+        "Easy to understand and maintain",
+        "Works with existing module structure"
+      ]
+      rule_logic = "Exception rules (priority 50-51) execute first and allow /testo/ and /appgo/ traffic. Protection rules (priority 300-301) only apply to other paths."
+    }
+  }
+}

@@ -75,7 +75,7 @@ module "waf_basic" {
     }
   ]
 
-  # Custom inline rules with exceptions for /testo/ and /appgo/ paths
+  # Custom inline rules with embedded exceptions using JSON-encoded complex statements
   custom_inline_rules = [
     {
       name        = "CrossSiteScripting_BODY_Block"
@@ -251,8 +251,8 @@ output "basic_waf_summary" {
       ]
       custom_rules = "None (basic example)"
       inline_rules = [
-        "CrossSiteScripting_BODY_Block (Priority 10) - Blocks XSS attempts in request body (except /testo/ and /appgo/)",
-        "SizeRestrictions_BODY_Block (Priority 20) - Blocks requests with body > 8KB (except /testo/ and /appgo/)"
+        "CrossSiteScripting_BODY_Block (Priority 10) - Blocks XSS attempts with embedded /testo/ and /appgo/ exceptions",
+        "SizeRestrictions_BODY_Block (Priority 20) - Blocks large bodies with embedded /testo/ and /appgo/ exceptions"
       ]
     }
     use_cases = [
@@ -266,37 +266,41 @@ output "basic_waf_summary" {
 }
 
 output "custom_rules_details" {
-  description = "Details of the custom inline rules with embedded URI exceptions"
+  description = "Details of the custom inline rules with embedded URI exceptions using JSON-encoded complex statements"
   value = {
     xss_protection_with_exceptions = {
       name            = "CrossSiteScripting_BODY_Block"
       priority        = 10
       action          = "block"
-      description     = "Blocks XSS attempts in request body using AND logic with NOT statement for URI exceptions"
+      description     = "Blocks XSS attempts in request body using JSON-encoded AND logic with NOT statement for URI exceptions"
       field           = "body"
       transformations = ["URL_DECODE", "HTML_ENTITY_DECODE"]
       exceptions      = ["/testo/", "/appgo/"]
       logic           = "Block if (XSS detected) AND NOT (URI starts with /testo/ OR /appgo/)"
+      implementation  = "JSON-encoded complex statement with and_statement, not_statement, and or_statement"
     }
     size_restriction_with_exceptions = {
-      name        = "SizeRestrictions_BODY_Block"
-      priority    = 20
-      action      = "block"
-      description = "Blocks large request bodies using AND logic with NOT statement for URI exceptions"
-      field       = "body"
-      size_limit  = "8192 bytes (8KB)"
-      exceptions  = ["/testo/", "/appgo/"]
-      logic       = "Block if (body size > 8KB) AND NOT (URI starts with /testo/ OR /appgo/)"
+      name           = "SizeRestrictions_BODY_Block"
+      priority       = 20
+      action         = "block"
+      description    = "Blocks large request bodies using JSON-encoded AND logic with NOT statement for URI exceptions"
+      field          = "body"
+      size_limit     = "8192 bytes (8KB)"
+      exceptions     = ["/testo/", "/appgo/"]
+      logic          = "Block if (body size > 8KB) AND NOT (URI starts with /testo/ OR /appgo/)"
+      implementation = "JSON-encoded complex statement with and_statement, not_statement, and or_statement"
     }
     implementation_approach = {
-      method = "Embedded exceptions using complex logical statements"
+      method = "Enhanced JSON-encoded complex statements with embedded exceptions"
       benefits = [
-        "More efficient - single rule evaluation",
-        "Cleaner logic - exceptions embedded in protection rules",
-        "Better performance - fewer rules to process",
-        "AWS WAF v2 best practice - uses complex logical statements"
+        "Single rule evaluation per protection type - maximum efficiency",
+        "Embedded exception logic using AWS WAF v2 complex statements",
+        "JSON-encoded statements for advanced logical operations",
+        "Support for and_statement, not_statement, and or_statement combinations",
+        "True AWS WAF v2 best practice implementation"
       ]
-      statement_structure = "AND(protection_condition, NOT(OR(exception1, exception2)))"
+      statement_structure = "jsonencode(AND(protection_condition, NOT(OR(exception1, exception2))))"
+      json_support        = "Enhanced WAF module now supports complex JSON-encoded statements in legacy statement field"
     }
   }
 }
